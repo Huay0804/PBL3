@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Training outputs
+pbl3_rl/runs/
+
+# SUMO outputs/logs
+logfile.txt
+
