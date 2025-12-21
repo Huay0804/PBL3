@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2025-12-21T12:51:01.713705+07:00 by Eclipse SUMO sumo 1.25.0
+<!-- generated on 2025-12-21T15:20:06.019645+07:00 by Eclipse SUMO sumo 1.25.0
 -->
 
 <sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
-        <net-file value="project.net.xml"/>
+        <net-file value="osm.net.xml.gz"/>
     </input>
 
 </sumoConfiguration>

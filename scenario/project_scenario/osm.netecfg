@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2025-12-21T12:51:07.972998+07:00 by Eclipse SUMO netedit 1.25.0
+<!-- generated on 2025-12-21T15:20:11.963420+07:00 by Eclipse SUMO netedit 1.25.0
 -->
 
 <neteditConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/neteditConfiguration.xsd">
 
     <input>
-        <sumocfg-file value="project.sumocfg"/>
-        <sumo-net-file value="project.net.xml"/>
+        <sumocfg-file value="osm.sumocfg"/>
+        <sumo-net-file value="osm.net.xml.gz"/>
     </input>
 
     <output>

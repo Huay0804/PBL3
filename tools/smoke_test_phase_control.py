@@ -98,6 +98,7 @@ def main() -> int:
     parser.add_argument("--gui", type=int, default=0, help="1 to use sumo-gui")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--log-every", type=int, default=1, help="Log every N seconds (default: 1)")
+    parser.add_argument("--segment-seconds", type=int, default=12, help="Seconds per phase segment (default: 12)")
     parser.add_argument("--warmup", type=int, default=0, help="Warmup seconds before forced-phase schedule")
     parser.add_argument(
         "--route-files",
@@ -116,7 +117,8 @@ def main() -> int:
     import traci  # noqa: E402
 
     scenario_dir = os.path.dirname(sumocfg)
-    schedule = [(0, 10), (2, 10), (0, 10), (2, 10)]
+    phases = [0, 2, 4, 6]
+    schedule = [(ph, int(args.segment_seconds)) for ph in phases]
 
     with pushd(scenario_dir):
         route_files: Optional[List[str]] = None

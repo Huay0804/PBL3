@@ -2,10 +2,8 @@ import argparse
 import csv
 import os
 import sys
-import time
-from dataclasses import dataclass
 from statistics import NormalDist
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -16,8 +14,17 @@ for p in (THIS_DIR, PBL3_ROOT):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from baseline_controllers import FixedTimePolicy, MaxQueuePolicy, run_episode  # noqa: E402
-from env_sumo_tl import SumoTLEnv  # noqa: E402
+from baseline_fds import run_fds_episode  # noqa: E402
+from env_sumo_cells import SumoTLEnvCells  # noqa: E402
+from sumo_lane_cells import (  # noqa: E402
+    build_lane_groups,
+    load_experiment_config,
+    read_sumocfg,
+    resolve_config_paths,
+    resolve_path,
+    verify_phase_semantics,
+)
+from tools.gen_routes import build_turn_map_from_net, generate_routes_file, read_net_from_sumocfg  # noqa: E402
 
 
 def ensure_dir(path: str) -> str:
@@ -42,41 +49,6 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         writer.writerows(rows)
 
 
-@dataclass
-class DQNPolicy:
-    model: tf.keras.Model
-
-    def reset(self) -> None:
-        return
-
-    def act(self, obs: np.ndarray, _info: dict) -> int:
-        q = self.model.predict(obs[None, :], verbose=0)[0]
-        return int(np.argmax(q))
-
-
-def summarize(rows: List[Dict[str, object]], *, out_csv: str) -> None:
-    import math
-
-    modes = sorted(set(str(r["mode"]) for r in rows))
-    # Paper-style metrics:
-    # - nwt_abs: abs(sum of negative rewards per episode)
-    # - sum_intersection_queue: sum(queue) sampled at each decision step
-    metrics = ["nwt_abs", "sum_intersection_queue", "throughput_junction"]
-    out: List[Dict[str, object]] = []
-    for mode in modes:
-        sub = [r for r in rows if str(r["mode"]) == mode]
-        row: Dict[str, object] = {"mode": mode, "n": len(sub)}
-        for m in metrics:
-            vals = [float(r.get(m, 0.0)) for r in sub]
-            mean = float(np.mean(vals)) if vals else 0.0
-            std = float(np.std(vals)) if vals else 0.0
-            row[f"{m}_mean"] = mean
-            row[f"{m}_std"] = std
-            row[f"{m}_sem"] = std / math.sqrt(len(vals)) if len(vals) > 0 else 0.0
-        out.append(row)
-    write_csv(out_csv, out)
-
-
 def _normal_pdf(xs: np.ndarray, mean: float, std: float) -> np.ndarray:
     if std <= 0.0:
         return np.zeros_like(xs)
@@ -84,137 +56,40 @@ def _normal_pdf(xs: np.ndarray, mean: float, std: float) -> np.ndarray:
     return (1.0 / (float(std) * np.sqrt(2.0 * np.pi))) * np.exp(-0.5 * z * z)
 
 
-def plot_eval(rows: List[Dict[str, object]], out_png: str) -> None:
+def plot_hist_compare(vals_a: List[float], vals_b: List[float], label_a: str, label_b: str, title: str, out_png: str) -> None:
     import matplotlib.pyplot as plt
 
-    modes = sorted(set(str(r["mode"]) for r in rows))
-    # If we have a learned policy, mirror the paper plots (Fixed vs Adaptive).
-    plot_modes = ["fixed", "dqn"] if ("fixed" in modes and "dqn" in modes) else modes
+    if not vals_a or not vals_b:
+        return
+    a = np.array(vals_a, dtype=np.float64)
+    b = np.array(vals_b, dtype=np.float64)
+    xmin = float(min(np.min(a), np.min(b)))
+    xmax = float(max(np.max(a), np.max(b)))
+    xs = np.linspace(xmin, xmax, 300)
 
-    metrics = [
-        ("nwt_abs", "Cumulative Negative Wait Time (abs)"),
-        ("sum_intersection_queue", "Cumulative Vehicle Queue Size"),
-    ]
-
-    fig, axes = plt.subplots(1, len(metrics), figsize=(12, 4))
-    if len(metrics) == 1:
-        axes = [axes]
-
-    for ax, (key, title) in zip(axes, metrics):
-        series = {}
-        for mode in plot_modes:
-            vals = np.array([float(r.get(key, 0.0)) for r in rows if str(r["mode"]) == mode], dtype=np.float64)
-            series[mode] = vals
-
-        all_vals = np.concatenate([v for v in series.values() if v.size > 0]) if series else np.array([], dtype=np.float64)
-        if all_vals.size == 0:
-            continue
-
-        xmin = float(np.min(all_vals))
-        xmax = float(np.max(all_vals))
-        if xmin == xmax:
-            xmin -= 1.0
-            xmax += 1.0
-        xs = np.linspace(xmin, xmax, 300)
-
-        for mode in plot_modes:
-            vals = series.get(mode, np.array([], dtype=np.float64))
-            if vals.size == 0:
-                continue
-            ax.hist(vals, bins=15, density=True, alpha=0.35, label=mode)
-            mean = float(np.mean(vals))
-            std = float(np.std(vals))
-            if std > 0.0:
-                ax.plot(xs, _normal_pdf(xs, mean, std), linewidth=1.6)
-
-        ax.set_title(title)
-        ax.set_ylabel("density")
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-
+    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+    ax.hist(a, bins=15, density=True, alpha=0.35, label=label_a)
+    ax.hist(b, bins=15, density=True, alpha=0.35, label=label_b)
+    ax.plot(xs, _normal_pdf(xs, float(np.mean(a)), float(np.std(a))), linewidth=1.5)
+    ax.plot(xs, _normal_pdf(xs, float(np.mean(b)), float(np.std(b))), linewidth=1.5)
+    ax.set_title(title)
+    ax.set_ylabel("density")
+    ax.grid(True, alpha=0.3)
+    ax.legend()
     fig.tight_layout()
     fig.savefig(out_png, dpi=150)
     plt.close(fig)
 
 
-def plot_paired_diffs(rows: List[Dict[str, object]], out_png: str) -> None:
-    import matplotlib.pyplot as plt
-
-    def collect(metric: str, a: str, b: str) -> np.ndarray:
-        by_seed: Dict[int, Dict[str, Dict[str, object]]] = {}
-        for r in rows:
-            try:
-                seed = int(r["seed"])
-            except Exception:
-                continue
-            by_seed.setdefault(seed, {})[str(r.get("mode"))] = r
-        diffs: List[float] = []
-        for seed in sorted(by_seed.keys()):
-            row_a = by_seed[seed].get(a)
-            row_b = by_seed[seed].get(b)
-            if row_a is None or row_b is None:
-                continue
-            diffs.append(float(row_b.get(metric, 0.0)) - float(row_a.get(metric, 0.0)))
-        return np.array(diffs, dtype=np.float64)
-
-    diffs_nwt = collect("nwt_abs", "fixed", "dqn")
-    diffs_vqs = collect("sum_intersection_queue", "fixed", "dqn")
-
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-    for ax, diffs, title in [
-        (axes[0], diffs_nwt, "Cumulative Negative Wait Time (Adaptive - Fixed)"),
-        (axes[1], diffs_vqs, "Cumulative Vehicle Queue Size (Adaptive - Fixed)"),
-    ]:
-        if diffs.size == 0:
-            continue
-        ax.hist(diffs, bins=15, density=True, alpha=0.6, color="tab:blue")
-        mean = float(np.mean(diffs))
-        std = float(np.std(diffs)) if diffs.size > 1 else 0.0
-        ax.set_title(title)
-        ax.axvline(mean, color="black", linestyle="--", linewidth=1.2, label=f"mean={mean:.2f}")
-        if std > 0.0:
-            xs = np.linspace(float(np.min(diffs)), float(np.max(diffs)), 200)
-            ax.plot(xs, _normal_pdf(xs, mean, std), color="tab:orange", linewidth=1.4)
-        ax.grid(True, alpha=0.3)
-        ax.legend()
-
-    fig.tight_layout()
-    fig.savefig(out_png, dpi=150)
-    plt.close(fig)
-
-
-def paired_left_ttest(rows: List[Dict[str, object]], *, metric: str, a: str = "fixed", b: str = "dqn") -> Dict[str, float]:
-    """
-    Paired difference test (b - a) with left-tailed alternative mean_diff < 0.
-    Returns an approximate p-value using Normal(0,1) CDF (no SciPy).
-    """
-
-    by_seed: Dict[int, Dict[str, Dict[str, object]]] = {}
-    for r in rows:
-        try:
-            seed = int(r["seed"])
-        except Exception:
-            continue
-        by_seed.setdefault(seed, {})[str(r.get("mode"))] = r
-
-    diffs: List[float] = []
-    for seed in sorted(by_seed.keys()):
-        row_a = by_seed[seed].get(a)
-        row_b = by_seed[seed].get(b)
-        if row_a is None or row_b is None:
-            continue
-        diffs.append(float(row_b.get(metric, 0.0)) - float(row_a.get(metric, 0.0)))
-
+def paired_left_ttest(diffs: List[float]) -> Dict[str, float]:
     n = int(len(diffs))
     if n == 0:
         return {"n": 0.0}
-
     diffs_arr = np.array(diffs, dtype=np.float64)
     mean = float(np.mean(diffs_arr))
     std = float(np.std(diffs_arr, ddof=1)) if n > 1 else 0.0
     sem = float(std / np.sqrt(n)) if n > 0 else 0.0
     t_score = float(mean / sem) if sem > 0 else float("-inf" if mean < 0 else ("inf" if mean > 0 else 0.0))
-
     p_left = float(NormalDist().cdf(t_score))
     try:
         from scipy import stats  # type: ignore
@@ -223,128 +98,187 @@ def paired_left_ttest(rows: List[Dict[str, object]], *, metric: str, a: str = "f
             p_left = float(stats.t.cdf(t_score, df=n - 1))
     except Exception:
         pass
-    return {"n": float(n), "mean_diff": mean, "std_diff": std, "t_score": t_score, "p_left_approx": p_left}
+    return {"n": float(n), "mean_diff": mean, "std_diff": std, "t_score": t_score, "p_value": p_left}
 
 
-def write_paired_diffs(rows: List[Dict[str, object]], *, metric: str, out_csv: str, a: str = "fixed", b: str = "dqn") -> None:
-    by_seed: Dict[int, Dict[str, Dict[str, object]]] = {}
-    for r in rows:
-        try:
-            seed = int(r["seed"])
-        except Exception:
-            continue
-        by_seed.setdefault(seed, {})[str(r.get("mode"))] = r
-
-    out_rows: List[Dict[str, object]] = []
-    for seed in sorted(by_seed.keys()):
-        row_a = by_seed[seed].get(a)
-        row_b = by_seed[seed].get(b)
-        if row_a is None or row_b is None:
-            continue
-        out_rows.append(
-            {
-                "seed": int(seed),
-                "metric": metric,
-                "mode_a": a,
-                "mode_b": b,
-                "diff": float(row_b.get(metric, 0.0)) - float(row_a.get(metric, 0.0)),
-            }
-        )
-    write_csv(out_csv, out_rows)
+def run_dqn_episode(env: SumoTLEnvCells, model: tf.keras.Model) -> Dict[str, float]:
+    obs = env.reset()
+    done = False
+    sum_neg_reward = 0.0
+    vqs = 0.0
+    w_t = 0.0
+    while not done:
+        q = model.predict(obs[None, :], verbose=0)[0]
+        action = int(np.argmax(q))
+        obs, reward, done, info = env.step(action)
+        if reward < 0:
+            sum_neg_reward += float(reward)
+        vqs = float(info.get("vqs", vqs))
+        w_t = float(info.get("w_t", w_t))
+    return {"nwt": float(sum_neg_reward), "nwt_abs": float(abs(sum_neg_reward)), "vqs": float(vqs), "w_t": float(w_t)}
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Evaluate baselines vs DQN (2-green-phase control).")
-    p.add_argument("--sumocfg", required=True)
-    p.add_argument("--tls-id", required=True)
-    p.add_argument("--routes-dir", required=True, help="Directory containing routes_seed{seed}.rou.xml")
-    p.add_argument("--seeds", type=int, nargs="+", default=list(range(20)))
-    p.add_argument("--model", default="", help="Path to trained .keras model (optional)")
+    p = argparse.ArgumentParser(description="Evaluate FDS vs Adaptive policy using experiment_config.yaml.")
+    p.add_argument("--config", default=os.path.join(PBL3_ROOT, "experiment_config.yaml"))
+    p.add_argument("--model", default="", help="Path to trained .keras model")
     p.add_argument("--gui", type=int, default=0)
-    p.add_argument("--max-steps", type=int, default=5400)
-    p.add_argument("--green", type=int, default=33)
-    p.add_argument("--yellow", type=int, default=6)
-    p.add_argument("--outdir", default="", help="Output directory (default: runs/paper-eval-<timestamp>)")
     return p.parse_args(argv)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parse_args(argv)
-    ts = time.strftime("%Y%m%d-%H%M%S")
-    outdir = args.outdir or os.path.join(PBL3_ROOT, "runs", f"paper-eval-{ts}")
-    ensure_dir(outdir)
-    plots_dir = ensure_dir(os.path.join(outdir, "plots"))
+    config = load_experiment_config(args.config)
+    paths = resolve_config_paths(args.config, config)
 
-    dqn_model: Optional[tf.keras.Model] = None
-    if args.model:
-        dqn_model = tf.keras.models.load_model(args.model)
+    exp = config.get("experiment", {})
+    traffic = config.get("traffic", {})
+    actions = config.get("actions", {})
+    timing = config.get("timing", {})
+    paths_cfg = config.get("paths", {})
+
+    sumocfg = paths["sumocfg"]
+    tls_id = paths["tls_id"]
+    sim_seconds = int(exp.get("sim_seconds", 5400))
+    eval_sims = int(exp.get("eval_sims", 100))
+
+    action_phase_indices = actions.get("action_phase_indices", [0, 2, 4, 6])
+
+    results_dir = resolve_path(args.config, str(paths_cfg.get("results_dir", "results")))
+    routes_root = resolve_path(args.config, str(paths_cfg.get("routes_dir", "results/routes")))
+    eval_dir = ensure_dir(os.path.join(results_dir, "eval"))
+    routes_eval_dir = ensure_dir(os.path.join(routes_root, "eval"))
+
+    # Phase semantics verification (required)
+    net_file = str(read_sumocfg(sumocfg)["net"])
+    lane_groups = build_lane_groups(net_file=net_file, tls_id=tls_id)
+    report = verify_phase_semantics(lane_groups, action_phase_indices)
+    print("phase_semantics_ok:", report.ok)
+    for issue in report.issues:
+        print("ISSUE:", issue)
+    for warn in report.warnings:
+        print("WARN:", warn)
+    if not report.ok:
+        raise RuntimeError("Phase semantics verification failed. Fix TLS program before evaluation.")
+
+    model_path = args.model.strip()
+    if not model_path:
+        model_path = os.path.join(results_dir, "training", f"run{int(exp.get('repeats', 3))}_model.keras")
+    model_path = os.path.abspath(model_path)
+    if not os.path.isfile(model_path):
+        raise RuntimeError(f"Model not found: {model_path}")
+    model = tf.keras.models.load_model(model_path)
+
+    net_file = read_net_from_sumocfg(sumocfg)
+    turn_map = build_turn_map_from_net(net_file=net_file, tls_id=tls_id)
+
+    seeds = list(range(eval_sims))
 
     rows: List[Dict[str, object]] = []
-    modes = ["fixed", "heuristic"] + (["dqn"] if dqn_model is not None else [])
+    fds_nwt_abs: List[float] = []
+    adap_nwt_abs: List[float] = []
+    fds_vqs: List[float] = []
+    adap_vqs: List[float] = []
 
-    for seed in args.seeds:
-        route_path = os.path.join(args.routes_dir, f"routes_seed{int(seed)}.rou.xml")
+    for seed in seeds:
+        route_path = os.path.join(routes_eval_dir, f"routes_seed{int(seed)}.rou.xml")
         if not os.path.isfile(route_path):
-            raise FileNotFoundError(f"Missing route file: {route_path}")
-
-        for mode in modes:
-            env = SumoTLEnv(
-                sumocfg=args.sumocfg,
-                tls_id=args.tls_id,
+            generate_routes_file(
+                out_route_file=route_path,
                 seed=int(seed),
-                gui=bool(args.gui),
-                max_steps=int(args.max_steps),
-                green_duration=int(args.green),
-                yellow_duration=int(args.yellow),
-                route_files=[route_path],
+                turns=turn_map,
+                n_vehicles=int(exp.get("vehicles", 1000)),
+                end=int(sim_seconds),
+                weibull_shape=float(traffic.get("weibull_shape", 2.0)),
+                straight_ratio=float(traffic.get("straight_ratio", 0.75)),
+                turn_ratio=float(traffic.get("turn_ratio", 0.25)),
+                uturn_ratio=float(traffic.get("uturn_ratio", 0.0)),
+                allow_uturn=bool(traffic.get("allow_uturn", False)),
+                depart_speed="10",
+                vehicle_prefix="veh",
             )
-            try:
-                if mode == "fixed":
-                    policy = FixedTimePolicy()
-                elif mode == "heuristic":
-                    policy = MaxQueuePolicy(env)
-                elif mode == "dqn":
-                    assert dqn_model is not None
-                    policy = DQNPolicy(dqn_model)
-                else:
-                    raise RuntimeError(mode)
 
-                out = run_episode(env, policy)
-                out["seed"] = int(seed)
-                out["mode"] = mode
-                out["route_file"] = route_path
-                rows.append(out)
-                print(
-                    f"seed={seed:03d} mode={mode:9s} "
-                    f"NWT(abs)={out.get('nwt_abs',0):.1f} VQS={out.get('sum_intersection_queue',0):.1f} thr={out.get('throughput_junction',0):.1f}"
-                )
-            finally:
-                env.close()
+        env_fds = SumoTLEnvCells(
+            sumocfg=sumocfg,
+            tls_id=tls_id,
+            seed=int(seed),
+            gui=bool(args.gui),
+            sim_seconds=sim_seconds,
+            num_cells=10,
+            action_phase_indices=action_phase_indices,
+            timing_mode=str(timing.get("mode_timing", "KEEP_TLS_NATIVE")),
+            green_step=int(timing.get("green_step", 10)),
+            yellow_time=int(timing.get("yellow_time", 4)),
+            route_files=[route_path],
+        )
+        env_dqn = SumoTLEnvCells(
+            sumocfg=sumocfg,
+            tls_id=tls_id,
+            seed=int(seed),
+            gui=bool(args.gui),
+            sim_seconds=sim_seconds,
+            num_cells=10,
+            action_phase_indices=action_phase_indices,
+            timing_mode=str(timing.get("mode_timing", "KEEP_TLS_NATIVE")),
+            green_step=int(timing.get("green_step", 10)),
+            yellow_time=int(timing.get("yellow_time", 4)),
+            route_files=[route_path],
+        )
 
-    runs_csv = os.path.join(outdir, "eval_runs.csv")
-    summary_csv = os.path.join(outdir, "summary.csv")
-    write_csv(runs_csv, rows)
-    summarize(rows, out_csv=summary_csv)
-    plot_eval(rows, os.path.join(plots_dir, "paper_eval.png"))
+        try:
+            fds_out = run_fds_episode(env_fds)
+            dqn_out = run_dqn_episode(env_dqn, model)
+        finally:
+            env_fds.close()
+            env_dqn.close()
 
-    if dqn_model is not None and any(str(r.get("mode")) == "fixed" for r in rows) and any(str(r.get("mode")) == "dqn" for r in rows):
-        plot_paired_diffs(rows, os.path.join(plots_dir, "paper_paired_diffs.png"))
-        analysis_txt = os.path.join(outdir, "paired_analysis.txt")
-        diffs_nwt_csv = os.path.join(outdir, "paired_diffs_nwt_abs.csv")
-        diffs_vqs_csv = os.path.join(outdir, "paired_diffs_vqs.csv")
-        write_paired_diffs(rows, metric="nwt_abs", out_csv=diffs_nwt_csv)
-        write_paired_diffs(rows, metric="sum_intersection_queue", out_csv=diffs_vqs_csv)
+        rows.append(
+            {
+                "seed": int(seed),
+                "fds_nwt": float(fds_out["nwt"]),
+                "fds_nwt_abs": float(fds_out["nwt_abs"]),
+                "fds_vqs": float(fds_out["vqs"]),
+                "adap_nwt": float(dqn_out["nwt"]),
+                "adap_nwt_abs": float(dqn_out["nwt_abs"]),
+                "adap_vqs": float(dqn_out["vqs"]),
+            }
+        )
 
-        a_nwt = paired_left_ttest(rows, metric="nwt_abs")
-        a_vqs = paired_left_ttest(rows, metric="sum_intersection_queue")
-        with open(analysis_txt, "w", encoding="utf-8") as handle:
-            handle.write("Paired analysis (dqn - fixed), left-tailed: mean_diff < 0\n")
-            handle.write(f"nwt_abs: {a_nwt}\n")
-            handle.write(f"sum_intersection_queue: {a_vqs}\n")
-            handle.write("p_left_approx uses Normal approximation (no SciPy).\n")
+        fds_nwt_abs.append(float(fds_out["nwt_abs"]))
+        adap_nwt_abs.append(float(dqn_out["nwt_abs"]))
+        fds_vqs.append(float(fds_out["vqs"]))
+        adap_vqs.append(float(dqn_out["vqs"]))
 
-    print(f"Saved: {runs_csv}")
-    print(f"Saved: {summary_csv}")
+        print(
+            f"seed={seed:03d} fds_nwt_abs={fds_out['nwt_abs']:.1f} adap_nwt_abs={dqn_out['nwt_abs']:.1f} "
+            f"fds_vqs={fds_out['vqs']:.1f} adap_vqs={dqn_out['vqs']:.1f}"
+        )
+
+    eval_csv = os.path.join(eval_dir, "eval.csv")
+    write_csv(eval_csv, rows)
+
+    plot_hist_compare(fds_nwt_abs, adap_nwt_abs, "FDS", "Adaptive", "Cumulative Negative Wait Time (abs)", os.path.join(eval_dir, "eval_nwt.png"))
+    plot_hist_compare(fds_vqs, adap_vqs, "FDS", "Adaptive", "Cumulative Vehicle Queue Size", os.path.join(eval_dir, "eval_vqs.png"))
+
+    diffs_nwt = [adap_nwt_abs[i] - fds_nwt_abs[i] for i in range(len(fds_nwt_abs))]
+    diffs_vqs = [adap_vqs[i] - fds_vqs[i] for i in range(len(fds_vqs))]
+
+    stats_nwt = paired_left_ttest(diffs_nwt)
+    stats_vqs = paired_left_ttest(diffs_vqs)
+
+    stats_txt = os.path.join(eval_dir, "stats.txt")
+    with open(stats_txt, "w", encoding="utf-8") as handle:
+        handle.write("Evaluation summary (means/std use nwt_abs and vqs)\n")
+        handle.write(f"nwt_abs_fds_mean={np.mean(fds_nwt_abs):.3f} nwt_abs_fds_std={np.std(fds_nwt_abs):.3f}\n")
+        handle.write(f"nwt_abs_adap_mean={np.mean(adap_nwt_abs):.3f} nwt_abs_adap_std={np.std(adap_nwt_abs):.3f}\n")
+        handle.write(f"vqs_fds_mean={np.mean(fds_vqs):.3f} vqs_fds_std={np.std(fds_vqs):.3f}\n")
+        handle.write(f"vqs_adap_mean={np.mean(adap_vqs):.3f} vqs_adap_std={np.std(adap_vqs):.3f}\n")
+        handle.write("Paired left-tailed t-test (Adaptive - FDS): mean_diff < 0\n")
+        handle.write(f"nwt_abs: {stats_nwt}\n")
+        handle.write(f"vqs: {stats_vqs}\n")
+
+    print(f"Saved: {eval_csv}")
+    print(f"Saved: {stats_txt}")
     return 0
 
 

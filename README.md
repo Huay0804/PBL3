@@ -1,15 +1,19 @@
-# PBL3 - DQN Traffic Light Control (SUMO/TraCI)
+# PBL3 - DQN điều khiển đèn giao thông (SUMO/TraCI)
 
-Du an nay la ban **standalone** de huan luyen dieu khien den giao thong bang DQN tren SUMO/TraCI theo phong cach paper, **nhung giu 2 actions** theo TLS thuc te cua nga tu Da Nang. Muc tieu la kiem soat dung pha den, train DQN, va bao cao ket qua theo form giong paper (cumulative negative wait time + cumulative queue size + paired analysis).
+Dự án huấn luyện DQN điều khiển 1 junction TLS trong SUMO bằng state lane-based 80-cell binary.
+Protocol thí nghiệm, metric và plots theo README gốc, nhưng action/phases được lấy từ TLS program thực tế
+trong scenario hiện tại (không gán nhãn NSA/NSLA/EWA/EWLA nếu chưa verify).
 
-## 0) Yeu cau cai dat (bat buoc)
+Single source of truth: `experiment_config.yaml`.
 
-- SUMO da cai va co TraCI:
-  - Dat bien moi truong `SUMO_HOME` tro toi thu muc SUMO, hoac
-  - Them `SUMO/bin` vao `PATH` de goi duoc `sumo` / `sumo-gui`.
-- Python + pip (khuyen nghi Windows Python 3.8+).
+## 1) Yêu cầu cài đặt
 
-## 0.1) Cai dat Python deps (Windows / PowerShell)
+- SUMO đã cài và có TraCI:
+  - set biến môi trường `SUMO_HOME` trỏ tới thư mục SUMO, hoặc
+  - thêm `SUMO/bin` vào `PATH` để gọi được `sumo` / `sumo-gui`.
+- Python 3.8+ (Windows)
+
+Cài deps:
 
 ```powershell
 cd C:\Users\halem\PBL3
@@ -19,159 +23,134 @@ pip install -U pip
 pip install -r .\pbl3_paper\requirements.txt
 ```
 
-## 0.2) Quick start (kiem tra nhanh)
+## 2) Cấu hình thí nghiệm (single source)
 
-1) Kiem tra TLS id + incoming lanes:
+Tất cả protocol/metric nằm trong `experiment_config.yaml`:
+
+- episodes=100, repeats=3, eval_sims=100
+- sim_seconds=5400, vehicles=1000
+- Weibull(shape=2) demand
+- tỷ lệ hướng đi: straight=0.6, turning=0.25, u-turn=0.15
+- action_phase_indices = [0, 2, 4, 6]
+- timing mode (chọn 1):
+  - `STRICT_MATCH_README` -> green_step=10, yellow_time=4 (ép bằng TraCI)
+  - `KEEP_TLS_NATIVE` -> dùng duration native trong TLS program
+
+Nếu thay đổi config, hãy train/eval lại. README phải luôn đồng bộ với config.
+
+## 3) State, actions, metrics
+
+State (80 binary cells):
+- 4 arms, mỗi arm có 2 lane-group:
+  - TR group: Through + Through+Right
+  - LU group: Left + U-turn
+- Mỗi group chia 10 cells theo khoảng cách đến junction.
+- Thứ tự state cố định:
+  `[E_TR, E_LU, W_TR, W_LU, N_TR, N_LU, S_TR, S_LU] x 10 cells`.
+
+Actions (4 green phases):
+- A0 -> phase 0 (EW thẳng + rẽ phải)
+- A1 -> phase 2 (NS thẳng + rẽ phải)
+- A2 -> phase 4 (EW rẽ trái + quay đầu, KHÔNG thẳng)
+- A3 -> phase 6 (NS rẽ trái + quay đầu, KHÔNG thẳng)
+
+Phase semantics được verify tự động bằng controlledLinks + state string.
+Nếu phase vi phạm (ví dụ phase 4/6 có thẳng), train/eval sẽ dừng và in lỗi.
+
+Metrics (paper-style):
+- w_t: cumulative waiting time của tất cả xe trên incoming lanes (sum accumulated waiting time).
+- nwt: negative cumulative waiting time = tổng reward âm trong episode.
+- vqs: cumulative vehicle queue size = tổng số xe dừng trên incoming lanes mỗi decision tick.
+
+## 4) Scenario
+
+Scenario hiện tại:
+- `scenario/project_scenario`
+- `scenario/project_scenario/osm.sumocfg`
+- TLS ID nằm trong `experiment_config.yaml`.
+- sumocfg chỉ chứa net; routes được inject từ scripts (per seed).
+
+## 5) Lệnh chạy (PowerShell)
+
+### 5.0 Kiểm tra nhanh (khuyến nghị)
+
 ```powershell
-python .\tools\inspect_tls_and_lanes.py --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg --tls-id GS_420249146 --gui 0
+python .\tools\inspect_tls_and_lanes.py --sumocfg .\scenario\project_scenario\osm.sumocfg --tls-id GS_cluster_6164917307_6164917332_6164917334_6164917335 --gui 0
+python .\tools\smoke_test_phase_control.py --sumocfg .\scenario\project_scenario\osm.sumocfg --tls-id GS_cluster_6164917307_6164917332_6164917334_6164917335 --seed 0 --log-every 5
 ```
 
-2) Smoke test dieu khien pha:
+Nếu phase semantics fail (có thẳng trong phase 4/6), hãy sửa TLS program trước khi train/eval.
+
+### 5.1 Generate routes cho eval
+
 ```powershell
-python .\tools\smoke_test_phase_control.py --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg --tls-id GS_420249146 --seed 0 --log-every 5
+python .\tools\gen_routes.py --config .\experiment_config.yaml --seeds (0..99)
 ```
 
-Neu 2 buoc tren chay duoc, co the train/eval binh thuong.
+Routes lưu vào `results/routes` (bị ignore bởi git).
 
-## 1) Tong quan kien truc
+Lưu ý: nếu net không có u-turn connections, generator sẽ tự động fallback về straight/turn.
+
+### 5.2 Train DQN (3 runs x 100 episodes)
+
+```powershell
+python .\pbl3_paper\train_dqn.py --config .\experiment_config.yaml
+```
+
+Outputs:
+- `results/training/run1.csv`
+- `results/training/run2.csv`
+- `results/training/run3.csv`
+- `results/training/avg_nwt.png`
+- `results/training/avg_vqs.png`
+- `results/training/run{1..3}_model.keras`
+
+Training tự động tạo routes mỗi episode và lưu trong `results/routes/run1`, `results/routes/run2`, `results/routes/run3`.
+
+### 5.3 Evaluate (FDS vs Adaptive) 100 simulations
+
+```powershell
+python .\pbl3_paper\eval.py --config .\experiment_config.yaml
+```
+
+Nếu muốn chọn model khác:
+
+```powershell
+python .\pbl3_paper\eval.py --config .\experiment_config.yaml --model .\results\training\run3_model.keras
+```
+
+Outputs:
+- `results/eval/eval.csv` (100 dòng: fds vs adaptive per seed)
+- `results/eval/eval_nwt.png`
+- `results/eval/eval_vqs.png`
+- `results/eval/stats.txt` (mean/std + paired t-test)
+
+## 6) Lưu ý và lỗi thường gặp
+
+- TLS ID sai: cập nhật `project.tls_id` trong `experiment_config.yaml`.
+- Phase semantics fail: sửa TLS program hoặc phase mapping, rồi chạy lại.
+- Không có incoming lanes: TLS id không điều khiển junction mong muốn.
+- SUMO không tìm thấy: set `SUMO_HOME` hoặc thêm `SUMO/bin` vào `PATH`.
+
+## 7) Cấu trúc file chính
 
 ```
 PBL3/
+  experiment_config.yaml
+  README.md
   pbl3_paper/
-    env_sumo_tl.py          # Env SUMO/TraCI: state, action, reward, step logic
-    train_dqn.py            # Train DQN + log + plot paper-style
-    eval.py                 # Evaluate fixed/heuristic/DQN + histogram + t-test
-    baseline_controllers.py # Fixed-time + heuristic max-queue
-    aggregate_training.py   # (Optional) trung binh 3 runs nhu paper
+    sumo_lane_cells.py
+    env_sumo_cells.py
+    baseline_fds.py
+    train_dqn.py
+    eval.py
     requirements.txt
-  scenario/
-    danang_16069441_10820969/
-      project.sumocfg       # SUMO config
-      project.net.xml       # Net
-      routes_paper_weibull_5400/   # Route files per seed (eval)
   tools/
-    inspect_tls_and_lanes.py       # Kiem tra TLS program + incoming lanes
-    smoke_test_phase_control.py    # Force phase de xem queue/wait
-    baseline_fixedtime_log.py      # Baseline fixed-time log (khong RL)
-    gen_routes_weibull_paper.py    # Tao route Weibull per-seed
+    gen_routes.py
+    inspect_tls_and_lanes.py
+    smoke_test_phase_control.py
+  scenario/
+    project_scenario/
+      osm.sumocfg
+      osm.net.xml.gz
 ```
-
-## 2) Pipeline chay chinh
-
-### 2.1 Kiem tra TLS + lanes (khong RL)
-
-```powershell
-python .\tools\inspect_tls_and_lanes.py --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg --tls-id GS_420249146 --gui 0
-```
-
-### 2.2 Smoke test dieu khien pha
-
-Force pha 0 -> 2 -> 0 -> 2 (10s/pha), log queue/wait tung 5s.
-
-```powershell
-python .\tools\smoke_test_phase_control.py --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg --tls-id GS_420249146 --seed 0 --log-every 5
-```
-
-### 2.3 Baseline fixed-time log (khong override TLS)
-
-```powershell
-python .\tools\baseline_fixedtime_log.py --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg --tls-id GS_420249146 --seed 0 --duration 6000 --log-every 5 --out .\runs\baseline_fixed_seed0.csv
-```
-
-### 2.4 Generate route cho eval (paper-like 100 seeds)
-
-```powershell
-python .\tools\gen_routes_weibull_paper.py `
-  --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg `
-  --tls-id GS_420249146 `
-  --outdir .\scenario\danang_16069441_10820969\routes_paper_weibull_5400 `
-  --seeds 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 `
-  --vehicles 1000 `
-  --end 5400
-```
-
-## 3) Cau hinh DQN (paper-style, 2 actions)
-
-### 3.1 Action space
-
-- Dung **2 actions** tu TLS program thuc te:
-  - action 0 -> green phase 0
-  - action 1 -> green phase 2
-- Yellow phase duoc chen tu dong (0->1, 2->3).
-- `green=33s`, `yellow=6s` (giu theo TLS thuc te, khong doi 10/4 nhu paper).
-
-### 3.2 State (40-cell binary, lane-based)
-
-- Lay incoming edges (4 huong) cua junction.
-- Moi arm (edge) chia 10 cell theo khoang cach den nut.
-- Neu arm co nhieu lane, tat ca lane duoc gom chung cho arm do (lane-based, khong tach theo huong re).
-- Tong state dim: 4 arms x 10 cells = 40.
-
-### 3.3 Reward
-
-- `reward = 0.9 * w_prev - w_now`
-- `w` la cumulative waiting time cua xe o incoming edges.
-
-### 3.4 DQN core
-
-- Replay buffer, epsilon-greedy, target network.
-- Network: 2 hidden layers (400 units, ReLU), output linear Q-values.
-- Batch size, gamma, learning rate co the tuy chinh trong CLI.
-
-## 4) Train DQN
-
-Train se tu generate routes moi episode (seed = `train_seed_start + episode`) theo setting paper:
-- `episodes=100`, `max_steps=5400`, `vehicles=1000`
-- Weibull shape = `2.0`
-- Ty le di thang = `0.75`
-
-```powershell
-python .\pbl3_paper\train_dqn.py `
-  --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg `
-  --tls-id GS_420249146 `
-  --episodes 100 `
-  --max-steps 5400 `
-  --vehicles 1000 `
-  --weibull-shape 2 `
-  --straight-prob 0.75 `
-  --train-seed-start 100 `
-  --green 33 `
-  --yellow 6
-```
-
-Output chinh:
-- `runs\paper-dqn-*\models\dqn_final.keras`
-- `runs\paper-dqn-*\train_log.csv`
-- `runs\paper-dqn-*\plots\training_paper.png`
-
-## 5) Evaluation (fixed vs heuristic vs DQN)
-
-```powershell
-python .\pbl3_paper\eval.py `
-  --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg `
-  --tls-id GS_420249146 `
-  --routes-dir .\scenario\danang_16069441_10820969\routes_paper_weibull_5400 `
-  --model .\runs\<RUN_PAPER_TRAIN>\models\dqn_final.keras `
-  --seeds 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99
-```
-
-Output chinh:
-- `runs\paper-eval-*\summary.csv`
-- `runs\paper-eval-*\plots\paper_eval.png`
-- `runs\paper-eval-*\plots\paper_paired_diffs.png`
-- `runs\paper-eval-*\paired_analysis.txt`
-
-## 6) (Tuy chon) Average 3 training runs nhu paper
-
-```powershell
-python .\pbl3_paper\aggregate_training.py `
-  --logs .\runs\paper-dqn-twoaction-run1\train_log.csv .\runs\paper-dqn-twoaction-run2\train_log.csv .\runs\paper-dqn-twoaction-run3\train_log.csv `
-  --outdir .\runs\paper-dqn-twoaction-avg
-```
-
-## 7) Luu y va loi thuong gap
-
-- **TLS ID sai**: dung `inspect_tls_and_lanes.py` de list TLS ids.
-- **Khong co incoming lanes**: TLS id khong khop hoac junction khong co controlled lanes.
-- **DQN khong tot**: 2 actions co the han che kha nang hoc. Tang episodes va seeds de on dinh.
-- **Teleport warning**: giao thong ket xe nang, khong phai loi code; van co the train nhung ket qua se dao dong.

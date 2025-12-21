@@ -3,7 +3,20 @@ import os
 import shutil
 import sys
 from contextlib import contextmanager
-from typing import Iterable, List, Optional, Sequence, Set
+from typing import List, Optional, Sequence, Set
+
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+PBL3_ROOT = os.path.normpath(os.path.join(THIS_DIR, ".."))
+for p in (THIS_DIR, PBL3_ROOT):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+from pbl3_paper.sumo_lane_cells import (  # noqa: E402
+    build_lane_groups,
+    read_sumocfg,
+    served_groups_for_phase,
+    verify_phase_semantics,
+)
 
 
 def ensure_sumo_tools() -> str:
@@ -51,11 +64,8 @@ def pushd(path: str):
         os.chdir(old)
 
 
-def unique_sorted(values: Iterable[str]) -> List[str]:
-    return sorted(set(values))
-
-
-def infer_incoming_lanes_from_links(controlled_links: Sequence[Sequence[Sequence[str]]]) -> List[str]:
+def infer_incoming_lanes(tls_id: str, traci_module) -> List[str]:
+    controlled_links = traci_module.trafficlight.getControlledLinks(tls_id)
     lanes: Set[str] = set()
     for link in controlled_links:
         for conn in link:
@@ -68,89 +78,105 @@ def infer_incoming_lanes_from_links(controlled_links: Sequence[Sequence[Sequence
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Inspect SUMO TLS program logics and incoming lanes via TraCI.")
+    parser = argparse.ArgumentParser(description="Inspect TLS program and lane-groups (TR/LU) per arm.")
     parser.add_argument("--sumocfg", required=True, help="Path to .sumocfg")
     parser.add_argument("--tls-id", required=True, help="Traffic light id")
     parser.add_argument("--gui", type=int, default=0, help="1 to use sumo-gui")
-    parser.add_argument("--expected-links", type=int, default=17, help="Expected controlled links (default: 17)")
+    parser.add_argument("--expected-links", type=int, default=None, help="Expected controlled link count")
     args = parser.parse_args()
 
     sumocfg = os.path.abspath(args.sumocfg)
     if not os.path.isfile(sumocfg):
         raise RuntimeError(f"sumocfg not found: {sumocfg}")
 
-    sumo_bin = resolve_sumo_binary(gui=bool(args.gui))
+    cfg = read_sumocfg(sumocfg)
+    net_file = str(cfg["net"])
+    lane_groups = build_lane_groups(net_file=net_file, tls_id=args.tls_id)
 
+    sumo_bin = resolve_sumo_binary(gui=bool(args.gui))
     ensure_sumo_tools()
     import traci  # noqa: E402
 
     scenario_dir = os.path.dirname(sumocfg)
     with pushd(scenario_dir):
-        traci.start([sumo_bin, "-c", sumocfg, "--no-step-log", "true"])
+        cmd = [
+            sumo_bin,
+            "-c",
+            sumocfg,
+            "--no-step-log",
+            "true",
+            "--duration-log.disable",
+            "true",
+        ]
+        traci.start(cmd)
         try:
             tls_ids = set(traci.trafficlight.getIDList())
             if args.tls_id not in tls_ids:
                 raise RuntimeError(f"tls-id {args.tls_id!r} not found. Available: {', '.join(sorted(tls_ids))}")
 
-            current_program = traci.trafficlight.getProgram(args.tls_id)
-            current_phase = traci.trafficlight.getPhase(args.tls_id)
-            sim_time = traci.simulation.getTime()
-            next_switch = traci.trafficlight.getNextSwitch(args.tls_id)
-            remaining = float(next_switch - sim_time)
-
-            print(f"sumocfg: {sumocfg}")
-            print(f"tls_id:  {args.tls_id}")
-            print(f"sim_time: {sim_time}")
-            print(f"current_program: {current_program}")
-            print(f"current_phase:   {current_phase}")
-            print(f"remaining_phase_time: {remaining:.2f}s")
-
-            controlled_links = traci.trafficlight.getControlledLinks(args.tls_id)
-            link_count = len(controlled_links)
-            print(f"controlled_links: {link_count}")
-
+            link_count = len(traci.trafficlight.getControlledLinks(args.tls_id))
             if args.expected_links is not None and int(args.expected_links) != link_count:
                 print(f"WARNING: expected_links={args.expected_links} but controlled_links={link_count}")
 
-            lanes = infer_incoming_lanes_from_links(controlled_links)
-            if not lanes:
-                lanes = unique_sorted(
-                    [l for l in traci.trafficlight.getControlledLanes(args.tls_id) if l and not l.startswith(":")]
-                )
-            print(f"incoming_lanes({len(lanes)}):")
-            for lane in lanes:
+            current_program = traci.trafficlight.getProgram(args.tls_id)
+            current_phase = traci.trafficlight.getPhase(args.tls_id)
+            remaining = traci.trafficlight.getNextSwitch(args.tls_id) - traci.simulation.getTime()
+
+            print(f"sumocfg: {sumocfg}")
+            print(f"tls_id:  {args.tls_id}")
+            print(f"net:     {net_file}")
+            print(f"sim_time: {traci.simulation.getTime()}")
+            print(f"current_program: {current_program}")
+            print(f"current_phase:   {current_phase}")
+            print(f"remaining_phase_time: {remaining:.2f}s")
+            print(f"controlled_links: {link_count}")
+
+            incoming_lanes = infer_incoming_lanes(args.tls_id, traci)
+            print(f"incoming_lanes({len(incoming_lanes)}):")
+            for lane in incoming_lanes:
                 print(f"  - {lane}")
 
+            print("lane_groups (per arm):")
+            for arm in lane_groups.arm_order:
+                groups = lane_groups.groups.get(arm, {})
+                tr = groups.get("TR", [])
+                lu = groups.get("LU", [])
+                print(f"  {arm}:")
+                print(f"    TR: {', '.join(tr) if tr else '(none)'}")
+                print(f"    LU: {', '.join(lu) if lu else '(none)'}")
+
+            print("state_order (group -> 10 cells):")
+            order = [f"{arm}_{grp}" for arm, grp in lane_groups.group_order]
+            print(f"  {order}")
+            print(f"state_dim = {len(order) * 10}")
+
             print("program_logics:")
-            logics = traci.trafficlight.getAllProgramLogics(args.tls_id)
-            if not logics:
-                print("  (no program logics returned)")
-                return 0
+            for idx, (dur, state) in enumerate(
+                zip(lane_groups.program.phase_durations, lane_groups.program.phase_states)
+            ):
+                print(f"  phase {idx}: dur={dur:.1f} state_len={len(state)} state='{state}'")
 
-            for logic in logics:
-                pid = getattr(logic, "programID", None) or getattr(logic, "programId", None) or "?"
-                phases = getattr(logic, "phases", []) or []
-                active = " (active)" if str(pid) == str(current_program) else ""
-                print(f"- programID={pid}{active} phases={len(phases)}")
-                for idx, phase in enumerate(phases):
-                    dur = getattr(phase, "duration", None)
-                    state = getattr(phase, "state", "") or ""
-                    print(f"    phase {idx}: dur={dur} state_len={len(state)} state={state!r}")
+            for ph in [0, 2, 4, 6]:
+                if ph < len(lane_groups.program.phase_states):
+                    served = served_groups_for_phase(
+                        lane_groups.program.phase_states[ph], lane_groups.conns, lane_groups.lane_to_group
+                    )
+                    print(f"served_groups phase {ph}: {sorted(served)}")
 
-                    if len(state) != link_count:
-                        raise RuntimeError(
-                            f"Sanity check failed: phase {idx} state_len={len(state)} != controlled_links={link_count}"
-                        )
-
-            print("OK: all phase state strings match controlled link count.")
-            return 0
+            report = verify_phase_semantics(lane_groups, [0, 2, 4, 6])
+            print(f"phase_semantics_ok: {report.ok}")
+            for issue in report.issues:
+                print(f"ISSUE: {issue}")
+            for warn in report.warnings:
+                print(f"WARN: {warn}")
         finally:
             try:
                 traci.close(False)
             except Exception:
                 pass
 
+    return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

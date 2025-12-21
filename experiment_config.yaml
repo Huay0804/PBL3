@@ -1,0 +1,42 @@
+project:
+  scenario_dir: "scenario/project_scenario"
+  sumocfg: "scenario/project_scenario/osm.sumocfg"
+  tls_id: "GS_cluster_6164917307_6164917332_6164917334_6164917335"
+
+experiment:
+  episodes: 100
+  repeats: 3
+  eval_sims: 100
+  sim_seconds: 5400
+  vehicles: 1000
+  train_seed_start: 100
+
+traffic:
+  weibull_shape: 2.0
+  straight_ratio: 0.6
+  turn_ratio: 0.25
+  uturn_ratio: 0.15
+  allow_uturn: true
+
+actions:
+  action_phase_indices: [0, 2, 4, 6]
+
+timing:
+  mode_timing: "KEEP_TLS_NATIVE"
+  green_step: 10
+  yellow_time: 4
+
+dqn:
+  gamma: 0.75
+  lr: 0.001
+  replay_size: 50000
+  batch_size: 100
+  target_update_every: 10
+  epsilon_start: 1.0
+  epsilon_end: 0.01
+  epsilon_decay_episodes: 100
+  hidden_sizes: [400, 400]
+
+paths:
+  results_dir: "results"
+  routes_dir: "results/routes"
