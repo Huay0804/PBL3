@@ -78,14 +78,14 @@ python .\tools\smoke_test_phase_control.py --sumocfg .\scenario\danang_16069441_
 python .\tools\baseline_fixedtime_log.py --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg --tls-id GS_420249146 --seed 0 --duration 6000 --log-every 5 --out .\runs\baseline_fixed_seed0.csv
 ```
 
-### 2.4 Generate route cho eval (seeds 0..19)
+### 2.4 Generate route cho eval (paper-like 100 seeds)
 
 ```powershell
 python .\tools\gen_routes_weibull_paper.py `
   --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg `
   --tls-id GS_420249146 `
   --outdir .\scenario\danang_16069441_10820969\routes_paper_weibull_5400 `
-  --seeds 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 `
+  --seeds 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 `
   --vehicles 1000 `
   --end 5400
 ```
@@ -100,14 +100,12 @@ python .\tools\gen_routes_weibull_paper.py `
 - Yellow phase duoc chen tu dong (0->1, 2->3).
 - `green=33s`, `yellow=6s` (giu theo TLS thuc te, khong doi 10/4 nhu paper).
 
-### 3.2 State (80-cell binary)
+### 3.2 State (40-cell binary, lane-based)
 
 - Lay incoming edges (4 huong) cua junction.
-- Moi edge chia 2 lane-group:
-  - group 0: xe re trai (duoc xac dinh bang route va dir_code)
-  - group 1: xe di thang/phai
-- Moi group chia 10 cell theo khoang cach den nut.
-- Tong state dim: 4 edges x 2 groups x 10 cells = 80.
+- Moi arm (edge) chia 10 cell theo khoang cach den nut.
+- Neu arm co nhieu lane, tat ca lane duoc gom chung cho arm do (lane-based, khong tach theo huong re).
+- Tong state dim: 4 arms x 10 cells = 40.
 
 ### 3.3 Reward
 
@@ -122,7 +120,10 @@ python .\tools\gen_routes_weibull_paper.py `
 
 ## 4) Train DQN
 
-Train se tu generate routes moi episode (seed = `train_seed_start + episode`).
+Train se tu generate routes moi episode (seed = `train_seed_start + episode`) theo setting paper:
+- `episodes=100`, `max_steps=5400`, `vehicles=1000`
+- Weibull shape = `2.0`
+- Ty le di thang = `0.75`
 
 ```powershell
 python .\pbl3_paper\train_dqn.py `
@@ -131,6 +132,8 @@ python .\pbl3_paper\train_dqn.py `
   --episodes 100 `
   --max-steps 5400 `
   --vehicles 1000 `
+  --weibull-shape 2 `
+  --straight-prob 0.75 `
   --train-seed-start 100 `
   --green 33 `
   --yellow 6
@@ -149,7 +152,7 @@ python .\pbl3_paper\eval.py `
   --tls-id GS_420249146 `
   --routes-dir .\scenario\danang_16069441_10820969\routes_paper_weibull_5400 `
   --model .\runs\<RUN_PAPER_TRAIN>\models\dqn_final.keras `
-  --seeds 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
+  --seeds 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99
 ```
 
 Output chinh:

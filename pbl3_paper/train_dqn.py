@@ -89,7 +89,7 @@ def plot_training(log_rows: List[Dict[str, object]], out_png: str) -> None:
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="Train DQN for 1 TLS junction (2 green actions, 80-cell binary state, delta-wait reward)."
+        description="Train DQN for 1 TLS junction (2 green actions, 40-cell binary state, delta-wait reward)."
     )
     p.add_argument("--sumocfg", required=True, help="Path to .sumocfg")
     p.add_argument("--tls-id", required=True, help="TLS id (e.g., GS_420249146)")

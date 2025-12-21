@@ -250,7 +250,6 @@ class SumoTLEnv:
 
         self.incoming_edges: List[str] = sorted({c.from_edge for c in self._conns})
         self.outgoing_edges: List[str] = sorted({c.to_edge for c in self._conns})
-        self._pair_dir: Dict[Tuple[str, str], str] = {(c.from_edge, c.to_edge): c.dir_code for c in self._conns}
 
         self.green_phases = [int(p) for p in green_phases] if green_phases is not None else infer_main_green_phases(program=self._program, k=2)
         self.yellow_after = dict(yellow_after) if yellow_after is not None else infer_yellow_after(program=self._program, green_phases=self.green_phases)
@@ -261,7 +260,8 @@ class SumoTLEnv:
         self._incoming_edges_order = sorted(self.incoming_edges)
         self._edge_pos = {e: i for i, e in enumerate(self._incoming_edges_order)}
 
-        self.state_dim = len(self._incoming_edges_order) * 2 * self.num_cells
+        # Lane-based state: 1 group per incoming edge, 10 cells per arm.
+        self.state_dim = len(self._incoming_edges_order) * self.num_cells
         self.num_actions = len(self.green_phases)
 
         self._base_lane_length = 500.0
@@ -537,22 +537,9 @@ class SumoTLEnv:
                 if edge_pos is None:
                     continue
 
-                group_offset = 1  # 0=left group, 1=straight/right group
-                try:
-                    route = traci.vehicle.getRoute(veh_id)
-                    ridx = int(traci.vehicle.getRouteIndex(veh_id))
-                    if ridx + 1 < len(route):
-                        next_edge = route[ridx + 1]
-                        dir_code = self._pair_dir.get((edge_id, next_edge))
-                        if dir_code == "l":
-                            group_offset = 0
-                except traci.exceptions.TraCIException:
-                    pass
-
                 distance_to_tls = max(0.0, lane_length - lane_pos)
                 cell = self._distance_to_cell(distance_to_tls, lane_length)
-                group_index = edge_pos * 2 + group_offset
-                state[group_index * self.num_cells + cell] = 1.0
+                state[edge_pos * self.num_cells + cell] = 1.0
 
         return state
 
