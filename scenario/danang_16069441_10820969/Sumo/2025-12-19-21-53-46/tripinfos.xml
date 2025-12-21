@@ -1,22 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on 2025-12-20T09:50:14.433376+07:00 by Eclipse SUMO sumo 1.25.0
+<!-- generated on 2025-12-20T16:39:47.525805+07:00 by Eclipse SUMO sumo 1.25.0
 <sumoConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
 
     <input>
-        <net-file value="Deep-Qlearning-TSC/danang_16069441_10820969/project.net.xml"/>
-        <route-files value="Deep-Qlearning-TSC/danang_16069441_10820969/Sumo/2025-12-19-21-53-46/osm.passenger.trips.xml"/>
-        <additional-files value="Deep-Qlearning-TSC/danang_16069441_10820969/Sumo/2025-12-19-21-53-46/osm.poly.xml.gz,Deep-Qlearning-TSC/danang_16069441_10820969/Sumo/2025-12-19-21-53-46/output.add.xml"/>
+        <net-file value="C:\Users\halem\PBL3\scenario\danang_16069441_10820969\project.net.xml"/>
+        <route-files value="C:\Users\halem\PBL3\scenario\danang_16069441_10820969\Sumo/2025-12-19-21-53-46/osm.passenger.trips.xml"/>
+        <additional-files value="C:\Users\halem\PBL3\scenario\danang_16069441_10820969\Sumo/2025-12-19-21-53-46/osm.poly.xml.gz,C:\Users\halem\PBL3\scenario\danang_16069441_10820969\Sumo/2025-12-19-21-53-46/output.add.xml"/>
     </input>
 
     <output>
-        <tripinfo-output value="Deep-Qlearning-TSC/danang_16069441_10820969/Sumo/2025-12-19-21-53-46/tripinfos.xml"/>
-        <statistic-output value="Deep-Qlearning-TSC/danang_16069441_10820969/Sumo/2025-12-19-21-53-46/stats.xml"/>
+        <tripinfo-output value="C:\Users\halem\PBL3\scenario\danang_16069441_10820969\Sumo/2025-12-19-21-53-46/tripinfos.xml"/>
+        <statistic-output value="C:\Users\halem\PBL3\scenario\danang_16069441_10820969\Sumo/2025-12-19-21-53-46/stats.xml"/>
     </output>
-
-    <time>
-        <end value="5"/>
-    </time>
 
     <processing>
         <ignore-route-errors value="true"/>
@@ -30,14 +26,16 @@
 
     <report>
         <verbose value="true"/>
-        <duration-log.disable value="true"/>
         <duration-log.statistics value="true"/>
         <no-step-log value="true"/>
     </report>
 
+    <traci_server>
+        <remote-port value="50581"/>
+    </traci_server>
+
     <gui_only>
-        <gui-settings-file value="Deep-Qlearning-TSC/danang_16069441_10820969/Sumo/2025-12-19-21-53-46/osm.view.xml"/>
-        <quit-on-end value="true"/>
+        <gui-settings-file value="C:\Users\halem\PBL3\scenario\danang_16069441_10820969\Sumo/2025-12-19-21-53-46/osm.view.xml"/>
     </gui_only>
 
 </sumoConfiguration>

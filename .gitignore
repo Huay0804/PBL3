@@ -7,8 +7,11 @@ __pycache__/
 venv/
 
 # Training outputs
-pbl3_rl/runs/
+runs/
+out/
 
 # SUMO outputs/logs
 logfile.txt
 
+# Generated per-seed routes (reproducible via tools/gen_routes.py)
+scenario/**/generated_routes*/

@@ -1,0 +1,303 @@
+<routes>
+  <vType id="standard_car" accel="1.0" decel="4.5" length="5.0" minGap="2.5" maxSpeed="25" sigma="0.5"/>
+  <vehicle id="veh_0_0" type="standard_car" depart="7" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_1" type="standard_car" depart="14" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_2" type="standard_car" depart="14" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_3" type="standard_car" depart="14" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_4" type="standard_car" depart="20" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_5" type="standard_car" depart="25" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_6" type="standard_car" depart="26" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_7" type="standard_car" depart="27" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_8" type="standard_car" depart="30" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_9" type="standard_car" depart="31" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_10" type="standard_car" depart="32" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_11" type="standard_car" depart="32" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_12" type="standard_car" depart="33" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_13" type="standard_car" depart="34" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_14" type="standard_car" depart="35" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_15" type="standard_car" depart="36" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_16" type="standard_car" depart="36" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_17" type="standard_car" depart="37" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_18" type="standard_car" depart="38" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_19" type="standard_car" depart="39" departLane="random" departSpeed="10">
+    <route edges="35950914#0 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_20" type="standard_car" depart="39" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_21" type="standard_car" depart="42" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_22" type="standard_car" depart="42" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_23" type="standard_car" depart="45" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_24" type="standard_car" depart="47" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_25" type="standard_car" depart="48" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_26" type="standard_car" depart="49" departLane="random" departSpeed="10">
+    <route edges="35950914#0 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_27" type="standard_car" depart="53" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_28" type="standard_car" depart="54" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_29" type="standard_car" depart="55" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_30" type="standard_car" depart="56" departLane="random" departSpeed="10">
+    <route edges="35950914#0 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_31" type="standard_car" depart="58" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_32" type="standard_car" depart="58" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_33" type="standard_car" depart="59" departLane="random" departSpeed="10">
+    <route edges="408162778#1 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_34" type="standard_car" depart="62" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_35" type="standard_car" depart="62" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_36" type="standard_car" depart="62" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_37" type="standard_car" depart="67" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_38" type="standard_car" depart="67" departLane="random" departSpeed="10">
+    <route edges="35950914#0 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_39" type="standard_car" depart="68" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_40" type="standard_car" depart="70" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_41" type="standard_car" depart="73" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_42" type="standard_car" depart="73" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_43" type="standard_car" depart="74" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_44" type="standard_car" depart="76" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_45" type="standard_car" depart="76" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_46" type="standard_car" depart="76" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_47" type="standard_car" depart="78" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_48" type="standard_car" depart="79" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_49" type="standard_car" depart="79" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_50" type="standard_car" depart="80" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_51" type="standard_car" depart="86" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_52" type="standard_car" depart="86" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_53" type="standard_car" depart="87" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_54" type="standard_car" depart="89" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_55" type="standard_car" depart="89" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_56" type="standard_car" depart="91" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_57" type="standard_car" depart="92" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_58" type="standard_car" depart="92" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_59" type="standard_car" depart="92" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_60" type="standard_car" depart="93" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_61" type="standard_car" depart="94" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_62" type="standard_car" depart="96" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_63" type="standard_car" depart="96" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_64" type="standard_car" depart="97" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_65" type="standard_car" depart="98" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_66" type="standard_car" depart="98" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_67" type="standard_car" depart="101" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_68" type="standard_car" depart="102" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_69" type="standard_car" depart="103" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_70" type="standard_car" depart="103" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_71" type="standard_car" depart="105" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_72" type="standard_car" depart="105" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_73" type="standard_car" depart="105" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_74" type="standard_car" depart="107" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_75" type="standard_car" depart="109" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_76" type="standard_car" depart="109" departLane="random" departSpeed="10">
+    <route edges="408162778#1 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_77" type="standard_car" depart="112" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_78" type="standard_car" depart="112" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_79" type="standard_car" depart="116" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_80" type="standard_car" depart="122" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_81" type="standard_car" depart="123" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_82" type="standard_car" depart="123" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_83" type="standard_car" depart="125" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_84" type="standard_car" depart="127" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_85" type="standard_car" depart="131" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_86" type="standard_car" depart="133" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_87" type="standard_car" depart="134" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_88" type="standard_car" depart="135" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_89" type="standard_car" depart="143" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_90" type="standard_car" depart="149" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_91" type="standard_car" depart="161" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_92" type="standard_car" depart="163" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_93" type="standard_car" depart="170" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_94" type="standard_car" depart="170" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -408162778#8"/>
+  </vehicle>
+  <vehicle id="veh_0_95" type="standard_car" depart="182" departLane="random" departSpeed="10">
+    <route edges="-408162776#4 35950914#4"/>
+  </vehicle>
+  <vehicle id="veh_0_96" type="standard_car" depart="194" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_97" type="standard_car" depart="194" departLane="random" departSpeed="10">
+    <route edges="-35950914#8 -35950914#3"/>
+  </vehicle>
+  <vehicle id="veh_0_98" type="standard_car" depart="196" departLane="random" departSpeed="10">
+    <route edges="408162778#1 408162776#0"/>
+  </vehicle>
+  <vehicle id="veh_0_99" type="standard_car" depart="211" departLane="random" departSpeed="10">
+    <route edges="35950914#0 35950914#4"/>
+  </vehicle>
+</routes>
