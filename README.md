@@ -1,6 +1,6 @@
 # PBL3 – DQN Traffic Light Control (SUMO/TraCI)
 
-Thư mục này là bản **copy standalone** để làm theo hướng **paper-like**: 4 actions (NSA/NSLA/EWA/EWLA), state binary 80 dims và reward delta-wait, chạy trên junction OSM (Đà Nẵng).
+Thư mục này là bản **copy standalone** để làm theo hướng **paper-like**: 2 actions, state binary 80 dims và reward delta-wait, chạy trên junction OSM (Đà Nẵng).
 
 ## 0) Smoke test điều khiển phase + baseline logging (không RL)
 
