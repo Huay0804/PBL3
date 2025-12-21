@@ -75,6 +75,25 @@ def plot_avg_series(avg_vals: List[float], out_png: str, title: str, ylabel: str
     plt.close(fig)
 
 
+def write_progress(
+    path: str,
+    *,
+    run_idx: int,
+    episode: int,
+    episodes: int,
+    seed: int,
+    epsilon: float,
+    stage: str,
+) -> None:
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(f"stage={stage}\n")
+        handle.write(f"run={run_idx}\n")
+        handle.write(f"episode={episode}\n")
+        handle.write(f"episodes_total={episodes}\n")
+        handle.write(f"seed={seed}\n")
+        handle.write(f"epsilon={epsilon:.6f}\n")
+
+
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Train DQN with protocol from experiment_config.yaml.")
     p.add_argument("--config", default=os.path.join(PBL3_ROOT, "experiment_config.yaml"))
@@ -103,6 +122,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     train_seed_start = int(exp.get("train_seed_start", 100))
 
     action_phase_indices = actions.get("action_phase_indices", [0, 2, 4, 6])
+    depart_lane = str(traffic.get("depart_lane", "best"))
+    depart_speed = str(traffic.get("depart_speed", "5"))
 
     results_dir = resolve_path(args.config, str(paths_cfg.get("results_dir", "results")))
     routes_root = resolve_path(args.config, str(paths_cfg.get("routes_dir", "results/routes")))
@@ -110,6 +131,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ensure_dir(results_dir)
     training_dir = ensure_dir(os.path.join(results_dir, "training"))
     routes_root = ensure_dir(routes_root)
+    progress_path = os.path.join(training_dir, "progress.txt")
 
     random.seed(0)
     np.random.seed(0)
@@ -187,6 +209,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         try:
             for ep in range(episodes):
                 seed = train_seed_start + (run_idx - 1) * episodes + ep
+                write_progress(
+                    progress_path,
+                    run_idx=run_idx,
+                    episode=ep,
+                    episodes=episodes,
+                    seed=seed,
+                    epsilon=0.0,
+                    stage="episode_start",
+                )
+                print(f"run {run_idx} ep {ep + 1}/{episodes} start seed={seed}", flush=True)
                 route_path = os.path.join(run_routes_dir, f"routes_seed{seed}.rou.xml")
                 generate_routes_file(
                     out_route_file=route_path,
@@ -199,7 +231,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     turn_ratio=float(traffic.get("turn_ratio", 0.25)),
                     uturn_ratio=float(traffic.get("uturn_ratio", 0.0)),
                     allow_uturn=bool(traffic.get("allow_uturn", False)),
-                    depart_speed="10",
+                    depart_lane=str(depart_lane),
+                    depart_speed=str(depart_speed),
                     vehicle_prefix="veh",
                 )
 
@@ -268,9 +301,20 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 run_nwt.append(float(sum_neg_reward))
                 run_vqs.append(float(vqs))
 
+                write_progress(
+                    progress_path,
+                    run_idx=run_idx,
+                    episode=ep,
+                    episodes=episodes,
+                    seed=seed,
+                    epsilon=epsilon,
+                    stage="episode_end",
+                )
                 print(
                     f"run {run_idx} ep {ep:03d} seed={seed} eps={epsilon:.3f} "
                     f"nwt={sum_neg_reward:.1f} vqs={vqs:.1f}"
+                ,
+                    flush=True,
                 )
         finally:
             env.close()
