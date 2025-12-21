@@ -146,7 +146,8 @@ def generate_routes_file(
     turn_ratio: float,
     uturn_ratio: float,
     allow_uturn: bool,
-    depart_speed: str = "10",
+    depart_lane: str = "best",
+    depart_speed: str = "5",
     vehicle_prefix: str = "veh",
 ) -> str:
     os.makedirs(os.path.dirname(os.path.abspath(out_route_file)), exist_ok=True)
@@ -200,8 +201,8 @@ def generate_routes_file(
 
             veh_id = f"{vehicle_prefix}_{seed}_{idx}"
             f.write(
-                f'  <vehicle id="{veh_id}" type="standard_car" depart="{int(depart)}" '
-                f'departLane="random" departSpeed="{depart_speed}">\n'
+            f'  <vehicle id="{veh_id}" type="standard_car" depart="{int(depart)}" '
+            f'departLane="{depart_lane}" departSpeed="{depart_speed}">\n'
             )
             f.write(f'    <route edges="{from_edge} {to_edge}"/>\n')
             f.write("  </vehicle>\n")
@@ -237,6 +238,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     turn_ratio = float(traffic.get("turn_ratio", 0.25))
     uturn_ratio = float(traffic.get("uturn_ratio", 0.0))
     allow_uturn = bool(traffic.get("allow_uturn", False))
+    depart_lane = str(traffic.get("depart_lane", "best"))
+    depart_speed = str(traffic.get("depart_speed", "5"))
 
     net_file = read_net_from_sumocfg(sumocfg)
     turns = build_turn_map_from_net(net_file=net_file, tls_id=tls_id)
@@ -264,7 +267,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             turn_ratio=float(turn_ratio),
             uturn_ratio=float(uturn_ratio),
             allow_uturn=bool(allow_uturn),
-            depart_speed="10",
+            depart_lane=str(depart_lane),
+            depart_speed=str(depart_speed),
             vehicle_prefix="veh",
         )
         print(f"Wrote: {os.path.abspath(out_path)}")

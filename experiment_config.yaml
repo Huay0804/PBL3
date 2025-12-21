@@ -17,6 +17,8 @@ traffic:
   turn_ratio: 0.25
   uturn_ratio: 0.15
   allow_uturn: true
+  depart_lane: "best"
+  depart_speed: "5"
 
 actions:
   action_phase_indices: [0, 2, 4, 6]
