@@ -12,6 +12,9 @@ out/
 
 # SUMO outputs/logs
 logfile.txt
+scenario/**/edgeData.xml
+scenario/**/stats.xml
+scenario/**/tripinfos.xml
 
 # Generated per-seed routes (reproducible via tools/gen_routes.py)
 scenario/**/generated_routes*/

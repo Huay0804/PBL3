@@ -2,6 +2,37 @@
 
 Du an nay la ban **standalone** de huan luyen dieu khien den giao thong bang DQN tren SUMO/TraCI theo phong cach paper, **nhung giu 2 actions** theo TLS thuc te cua nga tu Da Nang. Muc tieu la kiem soat dung pha den, train DQN, va bao cao ket qua theo form giong paper (cumulative negative wait time + cumulative queue size + paired analysis).
 
+## 0) Yeu cau cai dat (bat buoc)
+
+- SUMO da cai va co TraCI:
+  - Dat bien moi truong `SUMO_HOME` tro toi thu muc SUMO, hoac
+  - Them `SUMO/bin` vao `PATH` de goi duoc `sumo` / `sumo-gui`.
+- Python + pip (khuyen nghi Windows Python 3.8+).
+
+## 0.1) Cai dat Python deps (Windows / PowerShell)
+
+```powershell
+cd C:\Users\halem\PBL3
+python -m venv .venv
+.venv\Scripts\Activate
+pip install -U pip
+pip install -r .\pbl3_paper\requirements.txt
+```
+
+## 0.2) Quick start (kiem tra nhanh)
+
+1) Kiem tra TLS id + incoming lanes:
+```powershell
+python .\tools\inspect_tls_and_lanes.py --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg --tls-id GS_420249146 --gui 0
+```
+
+2) Smoke test dieu khien pha:
+```powershell
+python .\tools\smoke_test_phase_control.py --sumocfg .\scenario\danang_16069441_10820969\project.sumocfg --tls-id GS_420249146 --seed 0 --log-every 5
+```
+
+Neu 2 buoc tren chay duoc, co the train/eval binh thuong.
+
 ## 1) Tong quan kien truc
 
 ```
