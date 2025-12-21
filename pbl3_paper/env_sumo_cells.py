@@ -12,6 +12,7 @@ if THIS_DIR not in sys.path:
 
 from sumo_lane_cells import (  # noqa: E402
     LaneGroups,
+    PhaseSemanticsReport,
     build_lane_groups,
     read_sumocfg,
     served_groups_for_phase,
@@ -220,6 +221,114 @@ class SumoTLEnvCells:
             state = self._lane_groups.program.phase_states[int(ph)]
             out[int(ph)] = served_groups_for_phase(state, self._lane_groups.conns, self._lane_groups.lane_to_group)
         return out
+
+    def verify_phase_semantics_live(self) -> PhaseSemanticsReport:
+        controlled_links = traci.trafficlight.getControlledLinks(self.tls_id)
+        issues: List[str] = []
+        warnings: List[str] = []
+        details: Dict[int, Dict[str, object]] = {}
+
+        if not controlled_links:
+            issues.append("No controlled links from TraCI for this tls_id.")
+            return PhaseSemanticsReport(ok=False, issues=issues, warnings=warnings, details=details)
+
+        dir_map: Dict[Tuple[str, str], str] = {}
+        for conn in self._lane_groups.conns:
+            dir_map[(conn.from_lane, conn.to_edge)] = conn.dir_code
+
+        phase_states = self._lane_groups.program.phase_states
+
+        for phase_index in self.green_phases:
+            if phase_index < 0 or phase_index >= len(phase_states):
+                issues.append(f"phase {phase_index} out of range for program length {len(phase_states)}")
+                continue
+            state = phase_states[int(phase_index)]
+            if len(state) != len(controlled_links):
+                issues.append(
+                    f"phase {phase_index} state length {len(state)} != controlled links {len(controlled_links)}"
+                )
+                continue
+
+            served_dirs: Set[str] = set()
+            served_arms: Set[str] = set()
+            served_links = 0
+            for i, sig in enumerate(state):
+                if sig not in {"g", "G"}:
+                    continue
+                for conn in controlled_links[i]:
+                    if not conn or len(conn) < 2:
+                        continue
+                    from_lane = str(conn[0])
+                    to_lane = str(conn[1])
+                    if from_lane.startswith(":") or to_lane.startswith(":"):
+                        continue
+                    to_edge = to_lane.rsplit("_", 1)[0]
+                    dir_code = dir_map.get((from_lane, to_edge), "?")
+                    from_edge = from_lane.rsplit("_", 1)[0]
+                    arm = self._lane_groups.edge_to_arm.get(from_edge, "UNK")
+                    served_dirs.add(dir_code)
+                    served_arms.add(arm)
+                    served_links += 1
+
+            if "?" in served_dirs:
+                served_dirs.discard("?")
+                warnings.append(f"phase {phase_index} has links with unknown dir code")
+
+            details[int(phase_index)] = {
+                "served_dirs": sorted(served_dirs),
+                "served_arms": sorted(served_arms),
+                "served_links": served_links,
+            }
+
+        expected = {
+            0: {"arms": {"E", "W"}, "allow_straight": True, "require_straight": True, "require_right": True},
+            2: {"arms": {"N", "S"}, "allow_straight": True, "require_straight": True, "require_right": True},
+            4: {"arms": {"E", "W"}, "allow_straight": False, "require_straight": False, "require_right": False},
+            6: {"arms": {"N", "S"}, "allow_straight": False, "require_straight": False, "require_right": False},
+        }
+
+        available_right: Dict[int, bool] = {}
+        available_straight: Dict[int, bool] = {}
+        for phase_idx, cfg in expected.items():
+            arms = cfg["arms"]
+            right_exists = False
+            straight_exists = False
+            for conn in self._lane_groups.conns:
+                arm = self._lane_groups.edge_to_arm.get(conn.from_edge, "UNK")
+                if arm not in arms:
+                    continue
+                if conn.dir_code == "r":
+                    right_exists = True
+                if conn.dir_code == "s":
+                    straight_exists = True
+            available_right[phase_idx] = right_exists
+            available_straight[phase_idx] = straight_exists
+
+        for phase_idx in self.green_phases:
+            if phase_idx not in expected:
+                continue
+            cfg = expected[int(phase_idx)]
+            info = details.get(int(phase_idx))
+            if not info:
+                continue
+            served_dirs = set(info.get("served_dirs", []))
+            served_arms = set(info.get("served_arms", []))
+
+            if not cfg["allow_straight"] and "s" in served_dirs:
+                issues.append(f"phase {phase_idx} serves straight movements but should not (dir='s')")
+            if cfg["require_straight"] and available_straight.get(int(phase_idx), False):
+                if "s" not in served_dirs:
+                    issues.append(f"phase {phase_idx} does not serve any straight movements (dir='s')")
+            if cfg["require_right"] and available_right.get(int(phase_idx), False):
+                if "r" not in served_dirs:
+                    warnings.append(f"phase {phase_idx} does not serve any right turns (dir='r')")
+
+            unexpected_arms = sorted([a for a in served_arms if a not in cfg["arms"] and a != "UNK"])
+            if unexpected_arms:
+                warnings.append(f"phase {phase_idx} serves unexpected arms: {unexpected_arms}")
+
+        ok = len(issues) == 0
+        return PhaseSemanticsReport(ok=ok, issues=issues, warnings=warnings, details=details)
 
     def _build_sumo_cmd(self) -> List[str]:
         cmd: List[str] = [

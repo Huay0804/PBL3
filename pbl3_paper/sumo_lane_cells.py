@@ -137,13 +137,13 @@ def _parse_net_tls(
     root = _open_xml(net_file)
 
     nodes: Dict[str, Tuple[float, float]] = {}
-    for node in root.findall("node"):
-        node_id = (node.get("id") or "").strip()
+    for junc in root.findall("junction"):
+        node_id = (junc.get("id") or "").strip()
         if not node_id:
             continue
         try:
-            x = float(node.get("x") or 0.0)
-            y = float(node.get("y") or 0.0)
+            x = float(junc.get("x") or 0.0)
+            y = float(junc.get("y") or 0.0)
         except Exception:
             x, y = 0.0, 0.0
         nodes[node_id] = (x, y)

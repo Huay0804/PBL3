@@ -17,12 +17,10 @@ for p in (THIS_DIR, PBL3_ROOT):
 from baseline_fds import run_fds_episode  # noqa: E402
 from env_sumo_cells import SumoTLEnvCells  # noqa: E402
 from sumo_lane_cells import (  # noqa: E402
-    build_lane_groups,
     load_experiment_config,
     read_sumocfg,
     resolve_config_paths,
     resolve_path,
-    verify_phase_semantics,
 )
 from tools.gen_routes import build_turn_map_from_net, generate_routes_file, read_net_from_sumocfg  # noqa: E402
 
@@ -149,18 +147,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     eval_dir = ensure_dir(os.path.join(results_dir, "eval"))
     routes_eval_dir = ensure_dir(os.path.join(routes_root, "eval"))
 
-    # Phase semantics verification (required)
-    net_file = str(read_sumocfg(sumocfg)["net"])
-    lane_groups = build_lane_groups(net_file=net_file, tls_id=tls_id)
-    report = verify_phase_semantics(lane_groups, action_phase_indices)
-    print("phase_semantics_ok:", report.ok)
-    for issue in report.issues:
-        print("ISSUE:", issue)
-    for warn in report.warnings:
-        print("WARN:", warn)
-    if not report.ok:
-        raise RuntimeError("Phase semantics verification failed. Fix TLS program before evaluation.")
-
     model_path = args.model.strip()
     if not model_path:
         model_path = os.path.join(results_dir, "training", f"run{int(exp.get('repeats', 3))}_model.keras")
@@ -171,6 +157,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     net_file = read_net_from_sumocfg(sumocfg)
     turn_map = build_turn_map_from_net(net_file=net_file, tls_id=tls_id)
+
+    # Phase semantics verification (required, live via TraCI)
+    env_check = SumoTLEnvCells(
+        sumocfg=sumocfg,
+        tls_id=tls_id,
+        seed=0,
+        gui=bool(args.gui),
+        sim_seconds=sim_seconds,
+        num_cells=10,
+        action_phase_indices=action_phase_indices,
+        timing_mode=str(timing.get("mode_timing", "KEEP_TLS_NATIVE")),
+        green_step=int(timing.get("green_step", 10)),
+        yellow_time=int(timing.get("yellow_time", 4)),
+    )
+    try:
+        env_check.reset()
+        report = env_check.verify_phase_semantics_live()
+        print("phase_semantics_ok:", report.ok)
+        for issue in report.issues:
+            print("ISSUE:", issue)
+        for warn in report.warnings:
+            print("WARN:", warn)
+        if not report.ok:
+            raise RuntimeError("Phase semantics verification failed. Fix TLS program before evaluation.")
+    finally:
+        env_check.close()
 
     seeds = list(range(eval_sims))
 

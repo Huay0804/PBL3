@@ -17,12 +17,10 @@ for p in (THIS_DIR, PBL3_ROOT):
 
 from env_sumo_cells import SumoTLEnvCells  # noqa: E402
 from sumo_lane_cells import (  # noqa: E402
-    build_lane_groups,
     load_experiment_config,
     read_sumocfg,
     resolve_config_paths,
     resolve_path,
-    verify_phase_semantics,
 )
 from tools.gen_routes import build_turn_map_from_net, generate_routes_file, read_net_from_sumocfg  # noqa: E402
 
@@ -113,18 +111,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     training_dir = ensure_dir(os.path.join(results_dir, "training"))
     routes_root = ensure_dir(routes_root)
 
-    # Phase semantics verification (required)
-    net_file = str(read_sumocfg(sumocfg)["net"])
-    lane_groups = build_lane_groups(net_file=net_file, tls_id=tls_id)
-    report = verify_phase_semantics(lane_groups, action_phase_indices)
-    print("phase_semantics_ok:", report.ok)
-    for issue in report.issues:
-        print("ISSUE:", issue)
-    for warn in report.warnings:
-        print("WARN:", warn)
-    if not report.ok:
-        raise RuntimeError("Phase semantics verification failed. Fix TLS program before training.")
-
     random.seed(0)
     np.random.seed(0)
     tf.random.set_seed(0)
@@ -141,6 +127,32 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     eps_start = float(dqn.get("epsilon_start", 1.0))
     eps_end = float(dqn.get("epsilon_end", 0.01))
     eps_decay_eps = int(dqn.get("epsilon_decay_episodes", episodes))
+
+    # Phase semantics verification (required, live via TraCI)
+    env_check = SumoTLEnvCells(
+        sumocfg=sumocfg,
+        tls_id=tls_id,
+        seed=int(train_seed_start),
+        gui=bool(args.gui),
+        sim_seconds=sim_seconds,
+        num_cells=10,
+        action_phase_indices=action_phase_indices,
+        timing_mode=str(timing.get("mode_timing", "KEEP_TLS_NATIVE")),
+        green_step=int(timing.get("green_step", 10)),
+        yellow_time=int(timing.get("yellow_time", 4)),
+    )
+    try:
+        env_check.reset()
+        report = env_check.verify_phase_semantics_live()
+        print("phase_semantics_ok:", report.ok)
+        for issue in report.issues:
+            print("ISSUE:", issue)
+        for warn in report.warnings:
+            print("WARN:", warn)
+        if not report.ok:
+            raise RuntimeError("Phase semantics verification failed. Fix TLS program before training.")
+    finally:
+        env_check.close()
 
     all_run_nwt: List[List[float]] = []
     all_run_vqs: List[List[float]] = []
