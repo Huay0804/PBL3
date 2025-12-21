@@ -116,7 +116,7 @@ def main() -> int:
     import traci  # noqa: E402
 
     scenario_dir = os.path.dirname(sumocfg)
-    schedule = [(0, 10), (2, 10), (4, 10), (2, 10)]
+    schedule = [(0, 10), (2, 10), (0, 10), (2, 10)]
 
     with pushd(scenario_dir):
         route_files: Optional[List[str]] = None
