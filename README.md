@@ -29,8 +29,8 @@ Tham số chạy nằm trong `experiment_config.yaml`:
 - sim_seconds=5400, vehicles=1000
 - Weibull(shape=2) demand
 - tỷ lệ hướng đi: straight=0.6, turning=0.25, u-turn=0.15
-- depart_lane="best", depart_speed="5" (training)
-- eval_depart_speed="auto" (eval để SUMO tự chọn tốc độ xuất phát)
+- depart_lane="best", depart_speed="auto" (SUMO tự chọn tốc độ xuất phát)
+- eval_depart_speed="auto"
 - action_phase_indices = [0, 2, 4, 6]
 - timing mode (chọn 1):
   - `STRICT_MATCH_README` -> green_step=10, yellow_time=4 (ép bằng TraCI)
@@ -91,6 +91,7 @@ python .\tools\gen_routes.py --config .\experiment_config.yaml --seeds (0..99)
 Routes lưu vào `results/routes` (bị ignore bởi git).
 
 Lưu ý: nếu net không có u-turn connections, generator sẽ tự động fallback về straight/turn.
+Nếu depart_speed="auto" thì route file không ghi `departSpeed` (SUMO tự chọn).
 
 ### 5.2 Train DQN (3 runs x 100 episodes)
 
@@ -141,7 +142,16 @@ Outputs:
 - `results/eval/eval.csv` (100 dòng: fds vs adaptive per seed)
 - `results/eval/eval_nwt.png`
 - `results/eval/eval_vqs.png`
+- `results/eval/eval_hist.png`
 - `results/eval/stats.txt` (mean/std + paired t-test)
+
+### 5.4 Chạy DQN trong SUMO-GUI (quan sát trực tiếp)
+
+```powershell
+python .\tools\run_dqn_gui.py --config .\experiment_config.yaml --model .\results\training\run3_model.keras
+```
+
+Mỗi lần chạy sẽ tạo route mới (seed theo thời gian) trong `results/routes/vis/`.
 
 ## 6) Lưu ý và lỗi thường gặp
 
@@ -168,6 +178,7 @@ PBL3/
     gen_routes.py
     inspect_tls_and_lanes.py
     smoke_test_phase_control.py
+    run_dqn_gui.py
   scenario/
     project_scenario/
       osm.sumocfg

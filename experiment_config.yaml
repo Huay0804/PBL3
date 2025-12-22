@@ -18,7 +18,7 @@ traffic:
   uturn_ratio: 0.15
   allow_uturn: true
   depart_lane: "best"
-  depart_speed: "5"
+  depart_speed: "auto"
   eval_depart_speed: "auto"
 
 actions:
