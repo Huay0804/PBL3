@@ -1,8 +1,8 @@
 # PBL3 - DQN điều khiển đèn giao thông (SUMO/TraCI)
 
 Dự án huấn luyện DQN điều khiển 1 junction TLS trong SUMO bằng state lane-based 80-cell binary.
-Protocol thí nghiệm, metric và plots bám theo README gốc; action/phases lấy trực tiếp từ TLS program
-thực tế và được kiểm tra hợp lệ bằng controlledLinks.
+Protocol thí nghiệm, metric và plots được chuẩn hoá theo cấu hình hiện tại; action/phases lấy trực tiếp
+từ TLS program thực tế và được kiểm tra hợp lệ bằng controlledLinks.
 
 Single source of truth: `experiment_config.yaml`.
 
@@ -59,7 +59,7 @@ Actions (4 green phases):
 Phase semantics được verify tự động bằng controlledLinks + state string.
 Nếu phase vi phạm (ví dụ phase 4/6 có thẳng), train/eval sẽ dừng và in lỗi.
 
-Metrics (paper-style):
+Metrics (chuẩn hoá):
 - w_t: cumulative waiting time của tất cả xe trên incoming lanes (sum accumulated waiting time).
 - nwt: negative cumulative waiting time = tổng reward âm trong episode.
 - vqs: cumulative vehicle queue size = tổng số xe dừng trên incoming lanes mỗi decision tick.
