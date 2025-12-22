@@ -164,6 +164,9 @@ def generate_routes_file(
         uturn_ratio = 0.0
         straight_ratio, turn_ratio, _ = _normalize_ratios(straight_ratio, turn_ratio, 0.0)
 
+    depart_speed = str(depart_speed).strip()
+    include_depart_speed = depart_speed.lower() not in {"", "auto", "default", "none"}
+
     with open(out_route_file, "w", encoding="utf-8", newline="\n") as f:
         f.write("<routes>\n")
         f.write(
@@ -200,10 +203,16 @@ def generate_routes_file(
                 continue
 
             veh_id = f"{vehicle_prefix}_{seed}_{idx}"
-            f.write(
-            f'  <vehicle id="{veh_id}" type="standard_car" depart="{int(depart)}" '
-            f'departLane="{depart_lane}" departSpeed="{depart_speed}">\n'
-            )
+            if include_depart_speed:
+                f.write(
+                    f'  <vehicle id="{veh_id}" type="standard_car" depart="{int(depart)}" '
+                    f'departLane="{depart_lane}" departSpeed="{depart_speed}">\n'
+                )
+            else:
+                f.write(
+                    f'  <vehicle id="{veh_id}" type="standard_car" depart="{int(depart)}" '
+                    f'departLane="{depart_lane}">\n'
+                )
             f.write(f'    <route edges="{from_edge} {to_edge}"/>\n')
             f.write("  </vehicle>\n")
 

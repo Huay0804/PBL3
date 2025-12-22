@@ -199,7 +199,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     action_phase_indices = actions.get("action_phase_indices", [0, 2, 4, 6])
     depart_lane = str(traffic.get("depart_lane", "best"))
-    depart_speed = str(traffic.get("depart_speed", "5"))
+    depart_speed = str(traffic.get("eval_depart_speed", "auto"))
 
     results_dir = resolve_path(args.config, str(paths_cfg.get("results_dir", "results")))
     routes_root = resolve_path(args.config, str(paths_cfg.get("routes_dir", "results/routes")))

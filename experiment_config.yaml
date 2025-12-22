@@ -19,6 +19,7 @@ traffic:
   allow_uturn: true
   depart_lane: "best"
   depart_speed: "5"
+  eval_depart_speed: "auto"
 
 actions:
   action_phase_indices: [0, 2, 4, 6]

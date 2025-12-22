@@ -29,7 +29,8 @@ Tham số chạy nằm trong `experiment_config.yaml`:
 - sim_seconds=5400, vehicles=1000
 - Weibull(shape=2) demand
 - tỷ lệ hướng đi: straight=0.6, turning=0.25, u-turn=0.15
-- depart_lane="best", depart_speed="5" (giảm lỗi xuất phát sai lane/qua gần nút)
+- depart_lane="best", depart_speed="5" (training)
+- eval_depart_speed="auto" (eval để SUMO tự chọn tốc độ xuất phát)
 - action_phase_indices = [0, 2, 4, 6]
 - timing mode (chọn 1):
   - `STRICT_MATCH_README` -> green_step=10, yellow_time=4 (ép bằng TraCI)
