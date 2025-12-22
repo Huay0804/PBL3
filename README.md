@@ -1,8 +1,8 @@
 # PBL3 - DQN điều khiển đèn giao thông (SUMO/TraCI)
 
 Dự án huấn luyện DQN điều khiển 1 junction TLS trong SUMO bằng state lane-based 80-cell binary.
-Protocol thí nghiệm, metric và plots theo README gốc, nhưng action/phases được lấy từ TLS program thực tế
-trong scenario hiện tại (không gán nhãn NSA/NSLA/EWA/EWLA nếu chưa verify).
+Protocol thí nghiệm, metric và plots bám theo README gốc; action/phases lấy trực tiếp từ TLS program
+thực tế và được kiểm tra hợp lệ bằng controlledLinks.
 
 Single source of truth: `experiment_config.yaml`.
 
