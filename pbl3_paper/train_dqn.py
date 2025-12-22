@@ -1,13 +1,18 @@
 import argparse
 import csv
+import logging
 import os
 import random
 import sys
 from collections import deque
 from typing import Deque, Dict, List, Optional, Sequence, Tuple
 
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 import numpy as np
 import tensorflow as tf
+
+tf.get_logger().setLevel(logging.ERROR)
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 PBL3_ROOT = os.path.normpath(os.path.join(THIS_DIR, ".."))
@@ -58,23 +63,6 @@ def build_q_model(state_dim: int, num_actions: int, hidden_sizes: Sequence[int],
     return model
 
 
-def plot_avg_series(avg_vals: List[float], out_png: str, title: str, ylabel: str) -> None:
-    import matplotlib.pyplot as plt
-
-    if not avg_vals:
-        return
-    episodes = list(range(len(avg_vals)))
-    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-    ax.plot(episodes, avg_vals, linewidth=1.6)
-    ax.set_title(title)
-    ax.set_xlabel("episode")
-    ax.set_ylabel(ylabel)
-    ax.grid(True, alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(out_png, dpi=150)
-    plt.close(fig)
-
-
 def write_progress(
     path: str,
     *,
@@ -98,6 +86,8 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Train DQN with protocol from experiment_config.yaml.")
     p.add_argument("--config", default=os.path.join(PBL3_ROOT, "experiment_config.yaml"))
     p.add_argument("--gui", type=int, default=0)
+    p.add_argument("--run-start", type=int, default=1, help="Start run index (1-based).")
+    p.add_argument("--run-end", type=int, default=None, help="End run index (1-based, inclusive).")
     return p.parse_args(argv)
 
 
@@ -120,6 +110,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     repeats = int(exp.get("repeats", 3))
     vehicles = int(exp.get("vehicles", 1000))
     train_seed_start = int(exp.get("train_seed_start", 100))
+
+    run_start = int(args.run_start)
+    run_end = int(args.run_end) if args.run_end is not None else int(repeats)
+    if run_start < 1 or run_end < run_start or run_end > repeats:
+        raise ValueError(f"Invalid run range: {run_start}..{run_end} (repeats={repeats})")
 
     action_phase_indices = actions.get("action_phase_indices", [0, 2, 4, 6])
     depart_lane = str(traffic.get("depart_lane", "best"))
@@ -149,6 +144,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     eps_start = float(dqn.get("epsilon_start", 1.0))
     eps_end = float(dqn.get("epsilon_end", 0.01))
     eps_decay_eps = int(dqn.get("epsilon_decay_episodes", episodes))
+    fit_verbose = int(dqn.get("fit_verbose", 1))
 
     # Phase semantics verification (required, live via TraCI)
     env_check = SumoTLEnvCells(
@@ -176,10 +172,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     finally:
         env_check.close()
 
-    all_run_nwt: List[List[float]] = []
-    all_run_vqs: List[List[float]] = []
-
-    for run_idx in range(1, repeats + 1):
+    for run_idx in range(run_start, run_end + 1):
         run_rows: List[Dict[str, object]] = []
         run_routes_dir = ensure_dir(os.path.join(routes_root, f"run{run_idx}"))
         model_path = os.path.join(training_dir, f"run{run_idx}_model.keras")
@@ -280,7 +273,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
                         q_pred = q_model.predict(states, verbose=0)
                         q_pred[np.arange(len(batch)), actions_b] = targets
-                        q_model.fit(states, q_pred, batch_size=len(batch), verbose=0)
+                        q_model.fit(states, q_pred, batch_size=len(batch), verbose=fit_verbose)
 
                 if (ep + 1) % int(target_update) == 0:
                     target_model.set_weights(q_model.get_weights())
@@ -325,19 +318,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"Saved: {run_csv}")
         print(f"Saved: {model_path}")
 
-        all_run_nwt.append(run_nwt)
-        all_run_vqs.append(run_vqs)
-
-    # Average across runs (per episode)
-    avg_nwt = [float(np.mean([run[ep] for run in all_run_nwt])) for ep in range(episodes)]
-    avg_vqs = [float(np.mean([run[ep] for run in all_run_vqs])) for ep in range(episodes)]
-
-    plot_avg_series(avg_nwt, os.path.join(training_dir, "avg_nwt.png"), "Avg cumulative negative wait time", "nwt")
-    plot_avg_series(avg_vqs, os.path.join(training_dir, "avg_vqs.png"), "Avg cumulative vehicle queue size", "vqs")
-    print(f"Saved: {os.path.join(training_dir, 'avg_nwt.png')}")
-    print(f"Saved: {os.path.join(training_dir, 'avg_vqs.png')}")
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+    run_start = int(args.run_start)
+    run_end = int(args.run_end) if args.run_end is not None else int(repeats)
+    if run_start < 1 or run_end < run_start or run_end > repeats:
+        raise ValueError(f"Invalid run range: {run_start}..{run_end} (repeats={repeats})")

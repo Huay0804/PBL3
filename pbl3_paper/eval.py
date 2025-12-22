@@ -47,33 +47,90 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         writer.writerows(rows)
 
 
-def _normal_pdf(xs: np.ndarray, mean: float, std: float) -> np.ndarray:
+def _gaussian_kde(xs: np.ndarray, samples: np.ndarray) -> np.ndarray:
+    if samples.size == 0:
+        return np.zeros_like(xs)
+    if samples.size == 1:
+        return np.zeros_like(xs)
+    std = float(np.std(samples, ddof=1))
     if std <= 0.0:
         return np.zeros_like(xs)
-    z = (xs - float(mean)) / float(std)
-    return (1.0 / (float(std) * np.sqrt(2.0 * np.pi))) * np.exp(-0.5 * z * z)
+    n = float(samples.size)
+    bandwidth = 1.06 * std * (n ** (-1.0 / 5.0))
+    if bandwidth <= 0.0:
+        return np.zeros_like(xs)
+    diffs = (xs[:, None] - samples[None, :]) / bandwidth
+    kernel = np.exp(-0.5 * diffs * diffs)
+    coef = 1.0 / (bandwidth * np.sqrt(2.0 * np.pi))
+    return coef * np.mean(kernel, axis=1)
 
 
-def plot_hist_compare(vals_a: List[float], vals_b: List[float], label_a: str, label_b: str, title: str, out_png: str) -> None:
-    import matplotlib.pyplot as plt
-
-    if not vals_a or not vals_b:
+def _plot_metric(
+    ax,
+    *,
+    vals_fds: List[float],
+    vals_adap: List[float],
+    title: str,
+) -> None:
+    if not vals_fds or not vals_adap:
         return
-    a = np.array(vals_a, dtype=np.float64)
-    b = np.array(vals_b, dtype=np.float64)
-    xmin = float(min(np.min(a), np.min(b)))
-    xmax = float(max(np.max(a), np.max(b)))
+    fds = np.array(vals_fds, dtype=np.float64)
+    adap = np.array(vals_adap, dtype=np.float64)
+    xmin = float(min(np.min(fds), np.min(adap)))
+    xmax = float(max(np.max(fds), np.max(adap)))
     xs = np.linspace(xmin, xmax, 300)
 
-    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-    ax.hist(a, bins=15, density=True, alpha=0.35, label=label_a)
-    ax.hist(b, bins=15, density=True, alpha=0.35, label=label_b)
-    ax.plot(xs, _normal_pdf(xs, float(np.mean(a)), float(np.std(a))), linewidth=1.5)
-    ax.plot(xs, _normal_pdf(xs, float(np.mean(b)), float(np.std(b))), linewidth=1.5)
+    color_adap = "tab:blue"
+    color_fds = "tab:orange"
+
+    ax.hist(adap, bins=15, density=True, alpha=0.35, color=color_adap, label="Adaptive TLCS")
+    ax.hist(fds, bins=15, density=True, alpha=0.35, color=color_fds, label="FDS TLCS")
+    ax.plot(xs, _gaussian_kde(xs, adap), color=color_adap, linewidth=1.6)
+    ax.plot(xs, _gaussian_kde(xs, fds), color=color_fds, linewidth=1.6)
     ax.set_title(title)
+    ax.set_xlabel(title)
     ax.set_ylabel("density")
-    ax.grid(True, alpha=0.3)
+    ax.grid(False)
     ax.legend()
+
+
+def plot_hist_compare(vals_fds: List[float], vals_adap: List[float], title: str, out_png: str) -> None:
+    import matplotlib.pyplot as plt
+
+    if not vals_fds or not vals_adap:
+        return
+    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+    _plot_metric(ax, vals_fds=vals_fds, vals_adap=vals_adap, title=title)
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=150)
+    plt.close(fig)
+
+
+def plot_eval_panels(
+    *,
+    fds_nwt_abs: List[float],
+    adap_nwt_abs: List[float],
+    fds_vqs: List[float],
+    adap_vqs: List[float],
+    out_png: str,
+) -> None:
+    import matplotlib.pyplot as plt
+
+    if not fds_nwt_abs or not adap_nwt_abs:
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+    _plot_metric(
+        axes[0],
+        vals_fds=fds_nwt_abs,
+        vals_adap=adap_nwt_abs,
+        title="Cumulative Negative Wait Time",
+    )
+    _plot_metric(
+        axes[1],
+        vals_fds=fds_vqs,
+        vals_adap=adap_vqs,
+        title="Cumulative Vehicle Queue Size",
+    )
     fig.tight_layout()
     fig.savefig(out_png, dpi=150)
     plt.close(fig)
@@ -141,6 +198,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     eval_sims = int(exp.get("eval_sims", 100))
 
     action_phase_indices = actions.get("action_phase_indices", [0, 2, 4, 6])
+    depart_lane = str(traffic.get("depart_lane", "best"))
+    depart_speed = str(traffic.get("depart_speed", "5"))
 
     results_dir = resolve_path(args.config, str(paths_cfg.get("results_dir", "results")))
     routes_root = resolve_path(args.config, str(paths_cfg.get("routes_dir", "results/routes")))
@@ -206,7 +265,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 turn_ratio=float(traffic.get("turn_ratio", 0.25)),
                 uturn_ratio=float(traffic.get("uturn_ratio", 0.0)),
                 allow_uturn=bool(traffic.get("allow_uturn", False)),
-                depart_speed="10",
+                depart_lane=str(depart_lane),
+                depart_speed=str(depart_speed),
                 vehicle_prefix="veh",
             )
 
@@ -269,8 +329,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     eval_csv = os.path.join(eval_dir, "eval.csv")
     write_csv(eval_csv, rows)
 
-    plot_hist_compare(fds_nwt_abs, adap_nwt_abs, "FDS", "Adaptive", "Cumulative Negative Wait Time (abs)", os.path.join(eval_dir, "eval_nwt.png"))
-    plot_hist_compare(fds_vqs, adap_vqs, "FDS", "Adaptive", "Cumulative Vehicle Queue Size", os.path.join(eval_dir, "eval_vqs.png"))
+    plot_hist_compare(fds_nwt_abs, adap_nwt_abs, "Cumulative Negative Wait Time", os.path.join(eval_dir, "eval_nwt.png"))
+    plot_hist_compare(fds_vqs, adap_vqs, "Cumulative Vehicle Queue Size", os.path.join(eval_dir, "eval_vqs.png"))
+    plot_eval_panels(
+        fds_nwt_abs=fds_nwt_abs,
+        adap_nwt_abs=adap_nwt_abs,
+        fds_vqs=fds_vqs,
+        adap_vqs=adap_vqs,
+        out_png=os.path.join(eval_dir, "eval_hist.png"),
+    )
 
     diffs_nwt = [adap_nwt_abs[i] - fds_nwt_abs[i] for i in range(len(fds_nwt_abs))]
     diffs_vqs = [adap_vqs[i] - fds_vqs[i] for i in range(len(fds_vqs))]

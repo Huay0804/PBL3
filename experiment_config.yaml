@@ -38,6 +38,7 @@ dqn:
   epsilon_end: 0.01
   epsilon_decay_episodes: 100
   hidden_sizes: [400, 400]
+  fit_verbose: 1
 
 paths:
   results_dir: "results"

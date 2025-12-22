@@ -36,6 +36,7 @@ Tất cả protocol/metric nằm trong `experiment_config.yaml`:
 - timing mode (chọn 1):
   - `STRICT_MATCH_README` -> green_step=10, yellow_time=4 (ép bằng TraCI)
   - `KEEP_TLS_NATIVE` -> dùng duration native trong TLS program
+- dqn.fit_verbose=1 (bật log Keras fit trên terminal)
 
 Nếu thay đổi config, hãy train/eval lại. README phải luôn đồng bộ với config.
 
@@ -98,15 +99,32 @@ Lưu ý: nếu net không có u-turn connections, generator sẽ tự động fa
 python .\pbl3_paper\train_dqn.py --config .\experiment_config.yaml
 ```
 
+Nếu chỉ muốn chạy 1 run:
+
+```powershell
+python .\pbl3_paper\train_dqn.py --config .\experiment_config.yaml --run-start 2 --run-end 2
+```
+
 Outputs:
 - `results/training/run1.csv`
 - `results/training/run2.csv`
 - `results/training/run3.csv`
-- `results/training/avg_nwt.png`
-- `results/training/avg_vqs.png`
 - `results/training/run{1..3}_model.keras`
 
 Training tự động tạo routes mỗi episode và lưu trong `results/routes/run1`, `results/routes/run2`, `results/routes/run3`.
+
+Theo dõi tiến độ:
+- `results/training/progress.txt` (episode hiện tại + seed)
+
+### 5.2b Vẽ đồ thị training (avg_nwt/avg_vqs)
+
+```powershell
+python .\pbl3_paper\plot_training_avg.py --training-dir .\results\training --runs 1 2 3
+```
+
+Outputs:
+- `results/training/avg_nwt.png`
+- `results/training/avg_vqs.png`
 
 ### 5.3 Evaluate (FDS vs Adaptive) 100 simulations
 
@@ -144,6 +162,7 @@ PBL3/
     env_sumo_cells.py
     baseline_fds.py
     train_dqn.py
+    plot_training_avg.py
     eval.py
     requirements.txt
   tools/
