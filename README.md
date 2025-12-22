@@ -129,12 +129,6 @@ Outputs:
 ### 5.3 Evaluate (FDS vs Adaptive) 100 simulations
 
 ```powershell
-python .\pbl3_paper\eval.py --config .\experiment_config.yaml
-```
-
-Nếu muốn chọn model khác:
-
-```powershell
 python .\pbl3_paper\eval.py --config .\experiment_config.yaml --model .\results\training\run3_model.keras
 ```
 

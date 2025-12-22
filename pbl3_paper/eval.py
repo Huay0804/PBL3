@@ -176,7 +176,7 @@ def run_dqn_episode(env: SumoTLEnvCells, model: tf.keras.Model) -> Dict[str, flo
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Evaluate FDS vs Adaptive policy using experiment_config.yaml.")
     p.add_argument("--config", default=os.path.join(PBL3_ROOT, "experiment_config.yaml"))
-    p.add_argument("--model", default="", help="Path to trained .keras model")
+    p.add_argument("--model", required=True, help="Path to trained .keras model")
     p.add_argument("--gui", type=int, default=0)
     return p.parse_args(argv)
 
@@ -207,8 +207,6 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     routes_eval_dir = ensure_dir(os.path.join(routes_root, "eval"))
 
     model_path = args.model.strip()
-    if not model_path:
-        model_path = os.path.join(results_dir, "training", f"run{int(exp.get('repeats', 3))}_model.keras")
     model_path = os.path.abspath(model_path)
     if not os.path.isfile(model_path):
         raise RuntimeError(f"Model not found: {model_path}")
