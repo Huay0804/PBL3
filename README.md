@@ -1,10 +1,8 @@
 # PBL3 - DQN điều khiển đèn giao thông (SUMO/TraCI)
 
 Dự án huấn luyện DQN điều khiển 1 junction TLS trong SUMO bằng state lane-based 80-cell binary.
-Protocol thí nghiệm, metric và plots được chuẩn hoá theo cấu hình hiện tại; action/phases lấy trực tiếp
-từ TLS program thực tế và được kiểm tra hợp lệ bằng controlledLinks.
-
-Single source of truth: `experiment_config.yaml`.
+Actions lấy trực tiếp từ TLS program thực tế và được kiểm tra hợp lệ bằng controlledLinks.
+Mọi tham số chạy nằm trong `experiment_config.yaml`.
 
 ## 1) Yêu cầu cài đặt
 
@@ -23,9 +21,9 @@ pip install -U pip
 pip install -r .\pbl3_paper\requirements.txt
 ```
 
-## 2) Cấu hình thí nghiệm (single source)
+## 2) Cấu hình thí nghiệm
 
-Tất cả protocol/metric nằm trong `experiment_config.yaml`:
+Tham số chạy nằm trong `experiment_config.yaml`:
 
 - episodes=100, repeats=3, eval_sims=100
 - sim_seconds=5400, vehicles=1000
@@ -36,9 +34,9 @@ Tất cả protocol/metric nằm trong `experiment_config.yaml`:
 - timing mode (chọn 1):
   - `STRICT_MATCH_README` -> green_step=10, yellow_time=4 (ép bằng TraCI)
   - `KEEP_TLS_NATIVE` -> dùng duration native trong TLS program
-- dqn.fit_verbose=1 (bật log Keras fit trên terminal)
+- dqn.fit_verbose=1 (bật log Keras fit)
 
-Nếu thay đổi config, hãy train/eval lại. README phải luôn đồng bộ với config.
+Nếu thay đổi config, hãy train/eval lại.
 
 ## 3) State, actions, metrics
 
@@ -56,11 +54,11 @@ Actions (4 green phases):
 - A2 -> phase 4 (EW rẽ trái + quay đầu, KHÔNG thẳng)
 - A3 -> phase 6 (NS rẽ trái + quay đầu, KHÔNG thẳng)
 
-Phase semantics được verify tự động bằng controlledLinks + state string.
+Phase semantics được kiểm tra tự động bằng controlledLinks + state string.
 Nếu phase vi phạm (ví dụ phase 4/6 có thẳng), train/eval sẽ dừng và in lỗi.
 
-Metrics (chuẩn hoá):
-- w_t: cumulative waiting time của tất cả xe trên incoming lanes (sum accumulated waiting time).
+Metrics:
+- w_t: cumulative waiting time của tất cả xe trên incoming lanes.
 - nwt: negative cumulative waiting time = tổng reward âm trong episode.
 - vqs: cumulative vehicle queue size = tổng số xe dừng trên incoming lanes mỗi decision tick.
 
