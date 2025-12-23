@@ -142,24 +142,49 @@ Outputs:
 ### 5.4 Chạy DQN trong SUMO-GUI (quan sát trực tiếp)
 
 ```powershell
-python .\tools\run_dqn_gui.py --config .\experiment_config.yaml --model .\results\training\run3_model.keras
+python .\tools\run_dqn_gui.py --config .\experiment_config.yaml --model .\results\training\run{x}_model.keras
 ```
 
 Mỗi lần chạy sẽ tạo route mới (seed theo thời gian) trong `results/routes/vis/`.
 
-## 6) Lưu ý và lỗi thường gặp
+## 6) Kết quả và phân tích
+
+### 6.1 Training (avg_nwt / avg_vqs)
+
+![Avg cumulative negative wait time](images/avg_nwt.png)
+
+![Avg cumulative vehicle queue size](images/avg_vqs.png)
+
+Nhận xét nhanh:
+- avg_nwt tăng dần về 0 (ít âm hơn) -> tổng thời gian chờ giảm qua các episode.
+- avg_vqs giảm đều từ đầu đến cuối -> hàng đợi tích lũy giảm.
+- Dao động lớn ở giai đoạn đầu, ổn định dần về cuối.
+
+### 6.2 Evaluation (FDS vs Adaptive)
+
+![Eval histogram](images/eval_hist.png)
+
+Nhận xét nhanh:
+- Phân phối Adaptive TLCS (màu xanh) nằm lệch trái so với FDS cho cả nwt và vqs -> xu hướng tốt hơn.
+- Hai phân phối vẫn còn chồng lấn -> cần xem `results/eval/stats.txt` để kết luận chắc chắn.
+
+## 7) Lưu ý và lỗi thường gặp
 
 - TLS ID sai: cập nhật `project.tls_id` trong `experiment_config.yaml`.
 - Phase semantics fail: sửa TLS program hoặc phase mapping, rồi chạy lại.
 - Không có incoming lanes: TLS id không điều khiển junction mong muốn.
 - SUMO không tìm thấy: set `SUMO_HOME` hoặc thêm `SUMO/bin` vào `PATH`.
 
-## 7) Cấu trúc file chính
+## 8) Cấu trúc file chính
 
 ```
 PBL3/
   experiment_config.yaml
   README.md
+  images/
+    avg_nwt.png
+    avg_vqs.png
+    eval_hist.png
   pbl3_paper/
     sumo_lane_cells.py
     env_sumo_cells.py
