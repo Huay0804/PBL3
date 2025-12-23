@@ -155,18 +155,13 @@ Mỗi lần chạy sẽ tạo route mới (seed theo thời gian) trong `results
 
 ![Avg cumulative vehicle queue size](images/avg_vqs.png)
 
-Nhận xét nhanh:
-- avg_nwt tăng dần về 0 (ít âm hơn) -> tổng thời gian chờ giảm qua các episode.
-- avg_vqs giảm đều từ đầu đến cuối -> hàng đợi tích lũy giảm.
-- Dao động lớn ở giai đoạn đầu, ổn định dần về cuối.
+Nhận xét: avg_nwt tăng dần về 0 (ít âm hơn), cho thấy tổng thời gian chờ tích lũy giảm khi học tiến triển. avg_vqs giảm đều theo episode, phản ánh hàng đợi tích lũy tại nút giao giảm dần. Dao động lớn ở giai đoạn đầu là bình thường do exploration mạnh, sau đó đường cong ổn định hơn khi policy dần hội tụ.
 
 ### 6.2 Evaluation (FDS vs Adaptive)
 
 ![Eval histogram](images/eval_hist.png)
 
-Nhận xét nhanh:
-- Phân phối Adaptive TLCS (màu xanh) nằm lệch trái so với FDS cho cả nwt và vqs -> xu hướng tốt hơn.
-- Hai phân phối vẫn còn chồng lấn -> cần xem `results/eval/stats.txt` để kết luận chắc chắn.
+Nhận xét từ `results/eval/stats.txt`: Adaptive TLCS có mean tốt hơn rõ rệt so với FDS ở cả hai thước đo. Cụ thể nwt_abs giảm từ 10762.155 xuống 9737.732 (giảm trung bình ~1024), vqs giảm từ 1387.380 xuống 1269.350 (giảm ~118). Độ lệch chuẩn của Adaptive lớn hơn một chút (nwt_abs std 920.156 vs 745.796; vqs std 46.304 vs 38.389), nghĩa là hiệu năng tốt hơn nhưng biến thiên cũng lớn hơn. Kiểm định t cặp một phía cho thấy chênh lệch trung bình (Adaptive - FDS) < 0 với t-score rất âm (nwt_abs t≈-8.53, vqs t≈-21.90) và p-value xấp xỉ 0, ủng hộ kết luận Adaptive TLCS tốt hơn FDS trong thiết lập eval hiện tại.
 
 ## 7) Lưu ý và lỗi thường gặp
 
