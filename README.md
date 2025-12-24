@@ -147,6 +147,19 @@ python .\tools\run_dqn_gui.py --config .\experiment_config.yaml --model .\result
 
 Mỗi lần chạy sẽ tạo route mới (seed theo thời gian) trong `results/routes/vis/`.
 
+### 5.5 Train Double DQN + Dueling (mô hình cải tiến)
+
+```powershell
+python .\pbl3_ddqn\train_ddqn.py --config .\experiment_config.yaml
+```
+
+Outputs:
+- `results/training_ddqn/run1.csv`
+- `results/training_ddqn/run{1..3}_model.keras`
+
+Routes dùng cho DDQN được lưu riêng trong `results/routes/ddqn_run{n}`.
+Mô hình này dùng chung config và environment để so sánh công bằng với baseline.
+
 ## 6) Kết quả và phân tích
 
 ### 6.1 Training (avg_nwt / avg_vqs)
@@ -180,6 +193,10 @@ PBL3/
     avg_nwt.png
     avg_vqs.png
     eval_hist.png
+  pbl3_shared/
+    __init__.py
+    env_sumo_cells.py
+    sumo_lane_cells.py
   pbl3_paper/
     sumo_lane_cells.py
     env_sumo_cells.py
@@ -188,6 +205,10 @@ PBL3/
     plot_training_avg.py
     eval.py
     requirements.txt
+  pbl3_ddqn/
+    __init__.py
+    models.py
+    train_ddqn.py
   tools/
     gen_routes.py
     inspect_tls_and_lanes.py
