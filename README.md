@@ -198,8 +198,6 @@ PBL3/
     env_sumo_cells.py
     sumo_lane_cells.py
   pbl3_paper/
-    sumo_lane_cells.py
-    env_sumo_cells.py
     baseline_fds.py
     train_dqn.py
     plot_training_avg.py

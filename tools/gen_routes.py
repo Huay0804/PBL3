@@ -16,7 +16,7 @@ import sys
 if PBL3_ROOT not in sys.path:
     sys.path.insert(0, PBL3_ROOT)
 
-from pbl3_paper.sumo_lane_cells import load_experiment_config, resolve_config_paths, resolve_path  # noqa: E402
+from pbl3_shared.sumo_lane_cells import load_experiment_config, resolve_config_paths, resolve_path  # noqa: E402
 
 
 @dataclass(frozen=True)

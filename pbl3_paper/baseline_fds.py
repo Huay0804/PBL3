@@ -9,8 +9,8 @@ for p in (THIS_DIR, PBL3_ROOT):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from env_sumo_cells import SumoTLEnvCells  # noqa: E402
-from sumo_lane_cells import (  # noqa: E402
+from pbl3_shared.env_sumo_cells import SumoTLEnvCells  # noqa: E402
+from pbl3_shared.sumo_lane_cells import (  # noqa: E402
     build_lane_groups,
     load_experiment_config,
     read_sumocfg,

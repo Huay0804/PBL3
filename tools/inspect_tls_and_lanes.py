@@ -11,7 +11,7 @@ for p in (THIS_DIR, PBL3_ROOT):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from pbl3_paper.sumo_lane_cells import (  # noqa: E402
+from pbl3_shared.sumo_lane_cells import (  # noqa: E402
     build_lane_groups,
     read_sumocfg,
     served_groups_for_phase,

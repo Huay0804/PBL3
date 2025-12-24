@@ -15,8 +15,8 @@ for p in (THIS_DIR, PBL3_ROOT):
         sys.path.insert(0, p)
 
 from baseline_fds import run_fds_episode  # noqa: E402
-from env_sumo_cells import SumoTLEnvCells  # noqa: E402
-from sumo_lane_cells import (  # noqa: E402
+from pbl3_shared.env_sumo_cells import SumoTLEnvCells  # noqa: E402
+from pbl3_shared.sumo_lane_cells import (  # noqa: E402
     load_experiment_config,
     read_sumocfg,
     resolve_config_paths,
