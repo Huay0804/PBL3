@@ -21,6 +21,7 @@ for p in (THIS_DIR, PBL3_ROOT):
         sys.path.insert(0, p)
 
 from pbl3_shared.env_sumo_cells import SumoTLEnvCells  # noqa: E402
+from model_baseline import build_q_model  # noqa: E402
 from pbl3_shared.sumo_lane_cells import (  # noqa: E402
     load_experiment_config,
     read_sumocfg,
@@ -51,16 +52,6 @@ def write_csv(path: str, rows: List[Dict[str, object]]) -> None:
         writer.writeheader()
         writer.writerows(rows)
 
-
-def build_q_model(state_dim: int, num_actions: int, hidden_sizes: Sequence[int], lr: float) -> tf.keras.Model:
-    inp = tf.keras.Input(shape=(state_dim,), dtype=tf.float32)
-    x = inp
-    for size in hidden_sizes:
-        x = tf.keras.layers.Dense(int(size), activation="relu")(x)
-    out = tf.keras.layers.Dense(num_actions, activation="linear")(x)
-    model = tf.keras.Model(inp, out)
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=float(lr)), loss="mse")
-    return model
 
 
 def write_progress(
@@ -118,7 +109,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     action_phase_indices = actions.get("action_phase_indices", [0, 2, 4, 6])
     depart_lane = str(traffic.get("depart_lane", "best"))
-    depart_speed = str(traffic.get("depart_speed", "5"))
+    depart_speed = str(traffic.get("depart_speed", "auto"))
 
     results_dir = resolve_path(args.config, str(paths_cfg.get("results_dir", "results")))
     routes_root = resolve_path(args.config, str(paths_cfg.get("routes_dir", "results/routes")))
@@ -136,6 +127,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     turn_map = build_turn_map_from_net(net_file=net_file, tls_id=tls_id)
 
     hidden_sizes = dqn.get("hidden_sizes", [400, 400])
+    if list(hidden_sizes) != [400, 400]:
+        raise RuntimeError("Baseline DQN requires hidden_sizes == [400, 400] for protocol consistency.")
     gamma = float(dqn.get("gamma", 0.75))
     lr = float(dqn.get("lr", 0.001))
     replay_size = int(dqn.get("replay_size", 50000))
@@ -189,6 +182,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             green_step=int(timing.get("green_step", 10)),
             yellow_time=int(timing.get("yellow_time", 4)),
         )
+        if env.state_dim != 80:
+            raise RuntimeError(f"Expected state_dim=80, got {env.state_dim}. Check lane-group config.")
+        if env.num_actions != 4:
+            raise RuntimeError(f"Expected num_actions=4, got {env.num_actions}. Check action phases.")
 
         q_model = build_q_model(env.state_dim, env.num_actions, hidden_sizes, lr=float(lr))
         target_model = build_q_model(env.state_dim, env.num_actions, hidden_sizes, lr=float(lr))
@@ -236,10 +233,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 vqs = 0.0
                 decisions = 0
 
-                if eps_decay_eps <= 1:
+                if eps_decay_eps <= 0:
                     epsilon = eps_end
                 else:
-                    decay = min(1.0, float(ep) / float(eps_decay_eps - 1))
+                    decay = min(1.0, float(ep) / float(eps_decay_eps))
                     epsilon = eps_start + decay * (eps_end - eps_start)
 
                 while not done:
@@ -271,9 +268,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         max_next = np.max(q_next, axis=1)
                         targets = rewards + (1.0 - dones) * float(gamma) * max_next
 
-                        q_pred = q_model.predict(states, verbose=0)
-                        q_pred[np.arange(len(batch)), actions_b] = targets
-                        q_model.fit(states, q_pred, batch_size=len(batch), verbose=fit_verbose)
+                        states_tf = tf.convert_to_tensor(states, dtype=tf.float32)
+                        actions_tf = tf.convert_to_tensor(actions_b, dtype=tf.int32)
+                        targets_tf = tf.convert_to_tensor(targets, dtype=tf.float32)
+
+                        with tf.GradientTape() as tape:
+                            q_pred = q_model(states_tf, training=True)
+                            q_taken = tf.gather(q_pred, actions_tf, axis=1, batch_dims=1)
+                            loss = tf.reduce_mean(tf.square(targets_tf - q_taken))
+                        grads = tape.gradient(loss, q_model.trainable_variables)
+                        q_model.optimizer.apply_gradients(zip(grads, q_model.trainable_variables))
 
                 if (ep + 1) % int(target_update) == 0:
                     target_model.set_weights(q_model.get_weights())
@@ -323,7 +327,3 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-    run_start = int(args.run_start)
-    run_end = int(args.run_end) if args.run_end is not None else int(repeats)
-    if run_start < 1 or run_end < run_start or run_end > repeats:
-        raise ValueError(f"Invalid run range: {run_start}..{run_end} (repeats={repeats})")

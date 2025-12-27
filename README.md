@@ -35,7 +35,8 @@ Tham số chạy nằm trong `experiment_config.yaml`:
 - timing mode (chọn 1):
   - `STRICT_MATCH_README` -> green_step=10, yellow_time=4 (ép bằng TraCI)
   - `KEEP_TLS_NATIVE` -> dùng duration native trong TLS program
-- dqn.fit_verbose=1 (bật log Keras fit)
+- DQN baseline dùng kiến trúc 80->400->400->4 (layer 1 linear, layer 2 ReLU)
+- Loss dùng gather + GradientTape (paper-strict), không dùng model.fit trong train loop
 
 Nếu thay đổi config, hãy train/eval lại.
 
@@ -116,6 +117,14 @@ Training tự động tạo routes mỗi episode và lưu trong `results/routes/
 Theo dõi tiến độ:
 - `results/training/progress.txt` (episode hiện tại + seed)
 
+### 5.2c Quickcheck DQN (không SUMO)
+
+```powershell
+python .\tools\dqn_quickcheck.py
+```
+
+Kiểm tra shape (B,80 -> B,4), TD target, và gradient theo action taken.
+
 ### 5.2b Vẽ đồ thị training (avg_nwt/avg_vqs)
 
 ```powershell
@@ -138,6 +147,22 @@ Outputs:
 - `results/eval/eval_vqs.png`
 - `results/eval/eval_hist.png`
 - `results/eval/stats.txt` (mean/std + paired t-test)
+
+### 5.3b So sánh 3 mô hình (FDS vs DQN baseline vs DDQN+Dueling)
+
+Sau khi chạy eval cho baseline và DDQN, lưu `eval.csv` thành 2 file riêng, ví dụ:
+- `results/eval/eval_dqn.csv`
+- `results/eval/eval_ddqn.csv`
+
+Chạy:
+
+```powershell
+python .\tools\plot_eval_compare.py --baseline .\results\eval\eval_dqn.csv --ddqn .\results\eval\eval_ddqn.csv
+```
+
+Outputs:
+- `results/eval/compare_hist.png`
+- `results/eval/compare_stats.txt`
 
 ### 5.4 Chạy DQN trong SUMO-GUI (quan sát trực tiếp)
 
@@ -168,13 +193,13 @@ Mô hình này dùng chung config và environment để so sánh công bằng v�
 
 ![Avg cumulative vehicle queue size](images/avg_vqs.png)
 
-Nhận xét: avg_nwt tăng dần về 0 (ít âm hơn), cho thấy tổng thời gian chờ tích lũy giảm khi học tiến triển. avg_vqs giảm đều theo episode, phản ánh hàng đợi tích lũy tại nút giao giảm dần. Dao động lớn ở giai đoạn đầu là bình thường do exploration mạnh, sau đó đường cong ổn định hơn khi policy dần hội tụ.
+Nhận xét: cập nhật sau khi có đồ thị từ `results/training/avg_nwt.png` và `results/training/avg_vqs.png`.
 
 ### 6.2 Evaluation (FDS vs Adaptive)
 
 ![Eval histogram](images/eval_hist.png)
 
-Nhận xét từ `results/eval/stats.txt`: Adaptive TLCS có mean tốt hơn rõ rệt so với FDS ở cả hai thước đo. Cụ thể nwt_abs giảm từ 10762.155 xuống 9737.732 (giảm trung bình ~1024), vqs giảm từ 1387.380 xuống 1269.350 (giảm ~118). Độ lệch chuẩn của Adaptive lớn hơn một chút (nwt_abs std 920.156 vs 745.796; vqs std 46.304 vs 38.389), nghĩa là hiệu năng tốt hơn nhưng biến thiên cũng lớn hơn. Kiểm định t cặp một phía cho thấy chênh lệch trung bình (Adaptive - FDS) < 0 với t-score rất âm (nwt_abs t≈-8.53, vqs t≈-21.90) và p-value xấp xỉ 0, ủng hộ kết luận Adaptive TLCS tốt hơn FDS trong thiết lập eval hiện tại.
+Nhận xét: cập nhật sau khi chạy eval và có `results/eval/stats.txt`.
 
 ## 7) Lưu ý và lỗi thường gặp
 
@@ -199,17 +224,20 @@ PBL3/
     sumo_lane_cells.py
   pbl3_paper/
     baseline_fds.py
+    model_baseline.py
     train_dqn.py
     plot_training_avg.py
     eval.py
     requirements.txt
   pbl3_ddqn/
     __init__.py
-    models.py
+    model_ddqn.py
     train_ddqn.py
   tools/
+    dqn_quickcheck.py
     gen_routes.py
     inspect_tls_and_lanes.py
+    plot_eval_compare.py
     smoke_test_phase_control.py
     run_dqn_gui.py
   scenario/

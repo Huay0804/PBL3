@@ -27,7 +27,7 @@ from pbl3_shared.sumo_lane_cells import (  # noqa: E402
     resolve_config_paths,
     resolve_path,
 )
-from pbl3_ddqn.models import build_dueling_q_model  # noqa: E402
+from pbl3_ddqn.model_ddqn import build_dueling_q_model  # noqa: E402
 from tools.gen_routes import build_turn_map_from_net, generate_routes_file, read_net_from_sumocfg  # noqa: E402
 
 
@@ -213,7 +213,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                     allow_uturn=bool(traffic.get("allow_uturn", False)),
                     depart_lane=str(depart_lane),
                     depart_speed=str(depart_speed),
-                    vehicle_prefix="ddqn",
+                    vehicle_prefix="veh",
                 )
 
                 obs = env.reset(seed=seed, route_files=[route_path])
@@ -223,10 +223,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 vqs = 0.0
                 decisions = 0
 
-                if eps_decay_eps <= 1:
+                if eps_decay_eps <= 0:
                     epsilon = eps_end
                 else:
-                    decay = min(1.0, float(ep) / float(eps_decay_eps - 1))
+                    decay = min(1.0, float(ep) / float(eps_decay_eps))
                     epsilon = eps_start + decay * (eps_end - eps_start)
 
                 while not done:
@@ -260,9 +260,16 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                         max_next = q_next_target[np.arange(len(batch)), next_actions]
                         targets = rewards + (1.0 - dones) * float(gamma) * max_next
 
-                        q_pred = q_model.predict(states, verbose=0)
-                        q_pred[np.arange(len(batch)), actions_b] = targets
-                        q_model.fit(states, q_pred, batch_size=len(batch), verbose=fit_verbose)
+                        states_tf = tf.convert_to_tensor(states, dtype=tf.float32)
+                        actions_tf = tf.convert_to_tensor(actions_b, dtype=tf.int32)
+                        targets_tf = tf.convert_to_tensor(targets, dtype=tf.float32)
+
+                        with tf.GradientTape() as tape:
+                            q_pred = q_model(states_tf, training=True)
+                            q_taken = tf.gather(q_pred, actions_tf, axis=1, batch_dims=1)
+                            loss = tf.reduce_mean(tf.square(targets_tf - q_taken))
+                        grads = tape.gradient(loss, q_model.trainable_variables)
+                        q_model.optimizer.apply_gradients(zip(grads, q_model.trainable_variables))
 
                 if (ep + 1) % int(target_update) == 0:
                     target_model.set_weights(q_model.get_weights())
